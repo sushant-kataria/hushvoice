@@ -1,13 +1,11 @@
-# HushVoice — self-hosted voice engine + optional web UI (no API keys)
+# HushVoice — local voice engine + optional web UI (no API keys)
 #
-# The engine service is your always-on clone/TTS server.
-# The web UI (Vercel or local) talks to it via HUSHVOICE_ENGINE_URL.
-#
-# Usage:
-#   docker compose up -d --build engine   # start the voice engine
-#   npm run dev                           # start the web UI
+# Run everything on this computer:
+#   docker compose up -d --build engine   # voice engine on :17493
+#   npm run dev                           # web UI on :3000
 #
 # First run downloads ML models into the model-cache volume (several GB).
+# See docs/LOCAL_INSTALL.md for full local setup steps.
 
 services:
   engine:
