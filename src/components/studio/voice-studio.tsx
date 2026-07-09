@@ -279,7 +279,7 @@ export function VoiceStudio() {
         throw new Error("Engine did not start a generation. Check /api/health.");
       }
 
-      // Poll until complete (Vercel-safe — short requests)
+      // Poll until complete (short requests while the engine generates)
       const deadline = Date.now() + 10 * 60 * 1000;
       let audioUrl: string | null = null;
       let contentType = "audio/wav";

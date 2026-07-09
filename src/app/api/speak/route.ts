@@ -17,8 +17,8 @@ export const maxDuration = 60;
  * Start (and optionally wait for) speech generation on the HushVoice engine.
  *
  * Body: { voiceId, text, language?, wait?: boolean }
- * - wait=false (default): returns { generationId, status } immediately — use on Vercel
- * - wait=true: blocks until audio is ready and returns the audio bytes (local/dev)
+ * - wait=false (default): returns { generationId, status } immediately (client polls)
+ * - wait=true: blocks until audio is ready and returns the audio bytes
  */
 export async function POST(request: Request) {
   try {

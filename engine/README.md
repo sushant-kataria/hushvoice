@@ -1,8 +1,8 @@
 # HushVoice Engine
 
-Always-on voice cloning & multilingual TTS server for HushVoice.
+Local voice cloning & multilingual TTS server for HushVoice.
 
-No third-party API keys. Models run on your machine / VPS.
+No third-party API keys. Models run on this computer.
 
 The engine source lives in `./backend/` and ships with this repo.
 
@@ -13,7 +13,9 @@ docker compose up -d --build engine
 curl http://127.0.0.1:17493/health
 ```
 
-The web UI (local or Vercel) talks to this service via `HUSHVOICE_ENGINE_URL`.
+The web UI talks to this service via `HUSHVOICE_ENGINE_URL` (default `http://127.0.0.1:17493`).
+
+See **[docs/LOCAL_INSTALL.md](../docs/LOCAL_INSTALL.md)** for full local setup.
 
 ## API surface (used by the web UI)
 

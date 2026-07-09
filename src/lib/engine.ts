@@ -1,6 +1,6 @@
 /**
  * Client for the self-hosted HushVoice engine.
- * Cloning + TTS run on your always-on server — no third-party API keys.
+ * Cloning + TTS run on this computer — no third-party API keys.
  */
 
 export const ENGINE_URL = (
