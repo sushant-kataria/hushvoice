@@ -9,6 +9,7 @@ import {
 } from "@/lib/voicebox";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const MIN_DURATION_MS = 2500;
 const MAX_BYTES = 12 * 1024 * 1024;

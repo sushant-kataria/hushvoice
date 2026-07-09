@@ -266,28 +266,66 @@ export function VoiceStudio() {
         }),
       });
 
-      const contentType = res.headers.get("Content-Type") || "";
+      const startData = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        generationId?: string;
+      };
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(
-          (data as { error?: string }).error || "Speak failed — is Voicebox running?"
+          startData.error || "Speak failed — is Voicebox running?"
         );
       }
-
-      if (!contentType.includes("audio")) {
-        throw new Error("Voicebox did not return audio. Check /api/health.");
+      if (!startData.generationId) {
+        throw new Error("Voicebox did not start a generation. Check /api/health.");
       }
 
-      const buf = await res.arrayBuffer();
-      const url = URL.createObjectURL(new Blob([buf], { type: contentType }));
-      const audio = new Audio(url);
+      // Poll until complete (Vercel-safe — short requests)
+      const deadline = Date.now() + 10 * 60 * 1000;
+      let audioUrl: string | null = null;
+      let contentType = "audio/wav";
+
+      while (Date.now() < deadline) {
+        const statusRes = await fetch(`/api/speak/${startData.generationId}`);
+        const status = (await statusRes.json()) as {
+          status?: string;
+          error?: string | null;
+        };
+        if (!statusRes.ok) {
+          throw new Error(status.error || "Failed to check generation status");
+        }
+        if (status.status === "failed") {
+          throw new Error(status.error || "Voicebox generation failed");
+        }
+        if (status.status === "completed") {
+          const audioRes = await fetch(
+            `/api/speak/${startData.generationId}?audio=1`
+          );
+          if (!audioRes.ok) {
+            const err = await audioRes.json().catch(() => ({}));
+            throw new Error(
+              (err as { error?: string }).error || "Failed to fetch audio"
+            );
+          }
+          contentType = audioRes.headers.get("Content-Type") || contentType;
+          const buf = await audioRes.arrayBuffer();
+          audioUrl = URL.createObjectURL(new Blob([buf], { type: contentType }));
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+
+      if (!audioUrl) {
+        throw new Error("Generation timed out. Try a shorter sentence.");
+      }
+
+      const audio = new Audio(audioUrl);
       audio.onended = () => {
         setSpeaking(false);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(audioUrl!);
       };
       audio.onerror = () => {
         setSpeaking(false);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(audioUrl!);
         toast.error("Playback failed");
       };
       await audio.play();

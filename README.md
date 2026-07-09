@@ -46,6 +46,19 @@ Open [http://localhost:3000/studio](http://localhost:3000/studio), allow the mic
 docker compose --profile full up -d --build
 ```
 
+## Deploy on Vercel
+
+The **UI deploys to Vercel**. Voicebox must run on a separate always-on host (VPS/Docker) — Vercel cannot run the ML models.
+
+1. Host Voicebox with a public HTTPS URL (see [DEPLOY.md](./DEPLOY.md))
+2. Import this repo in [vercel.com/new](https://vercel.com/new)
+3. Set env vars:
+   - `VOICEBOX_URL` = `https://your-voicebox-host`
+   - `VOICEBOX_ENGINE` = `chatterbox`
+4. Deploy
+
+Full walkthrough: **[DEPLOY.md](./DEPLOY.md)**
+
 ## Configuration
 
 | Variable | Default | Description |

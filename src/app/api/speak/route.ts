@@ -10,10 +10,15 @@ import {
 } from "@/lib/voicebox";
 
 export const runtime = "nodejs";
+/** Allow longer waits on Pro / local; Hobby still caps lower. Prefer async poll. */
+export const maxDuration = 60;
 
 /**
- * Generate speech with the self-hosted Voicebox engine (Chatterbox Multilingual).
- * No API keys — models run on your machine / server.
+ * Start (and optionally wait for) speech generation on self-hosted Voicebox.
+ *
+ * Body: { voiceId, text, language?, wait?: boolean }
+ * - wait=false (default): returns { generationId, status } immediately — use on Vercel
+ * - wait=true: blocks until audio is ready and returns the audio bytes (local/dev)
  */
 export async function POST(request: Request) {
   try {
@@ -21,6 +26,7 @@ export async function POST(request: Request) {
       voiceId?: string;
       text?: string;
       language?: string;
+      wait?: boolean;
     };
 
     const text = (body.text || "").trim();
@@ -54,8 +60,20 @@ export async function POST(request: Request) {
       engine: profile.default_engine || "chatterbox",
     });
 
+    const shouldWait = body.wait === true;
+
+    if (!shouldWait) {
+      return NextResponse.json({
+        generationId: generation.id,
+        status: generation.status || "generating",
+        language: language.code,
+        engine: generation.engine || profile.default_engine || "chatterbox",
+        backend: "voicebox",
+      });
+    }
+
     const done = await waitForGeneration(generation.id, {
-      timeoutMs: 10 * 60 * 1000,
+      timeoutMs: 55_000,
       intervalMs: 1200,
     });
 
