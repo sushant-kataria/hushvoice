@@ -17,8 +17,6 @@ services:
     build:
       context: ./engine
       dockerfile: Dockerfile
-      args:
-        ENGINE_SOURCE_URL: ${ENGINE_SOURCE_URL}
     container_name: hushvoice-engine
     restart: unless-stopped
     ports:

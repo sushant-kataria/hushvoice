@@ -14,9 +14,6 @@ Vercel cannot run the ML engine (GPU/CPU models, long jobs, Docker). Point the V
 On a VPS / home server with Docker (8GB+ RAM recommended):
 
 ```bash
-# Set ENGINE_SOURCE_URL to a compatible FastAPI voice-stack git repo
-export ENGINE_SOURCE_URL="https://…"
-
 docker compose up -d --build engine
 ```
 

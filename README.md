@@ -19,9 +19,6 @@ No cloud TTS keys. Models download once into a local cache.
 ### 1. Start the HushVoice engine
 
 ```bash
-# Required to build the engine image — compatible FastAPI voice stack source
-export ENGINE_SOURCE_URL="https://…"
-
 docker compose up -d --build engine
 ```
 
@@ -46,7 +43,6 @@ Open [http://localhost:3000/studio](http://localhost:3000/studio), allow the mic
 ### Full stack in Docker
 
 ```bash
-export ENGINE_SOURCE_URL="https://…"
 docker compose --profile full up -d --build
 ```
 
@@ -69,7 +65,6 @@ Full walkthrough: **[DEPLOY.md](./DEPLOY.md)**
 | --- | --- | --- |
 | `HUSHVOICE_ENGINE_URL` | `http://127.0.0.1:17493` | Always-on HushVoice engine base URL |
 | `HUSHVOICE_TTS_ENGINE` | `chatterbox` | TTS model family for multilingual cloning |
-| `ENGINE_SOURCE_URL` | _(required for image build)_ | Git URL of a compatible engine source |
 
 ## Languages
 
