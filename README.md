@@ -57,7 +57,8 @@ The **UI deploys to Vercel**. The **HushVoice engine** must run on a separate al
    - `HUSHVOICE_TTS_ENGINE` = `chatterbox`
 4. Deploy
 
-Full walkthrough: **[DEPLOY.md](./DEPLOY.md)**
+Full walkthrough: **[DEPLOY.md](./DEPLOY.md)**  
+Free Oracle Cloud engine host (capacity checks included): **[docs/ORACLE_CLOUD.md](./docs/ORACLE_CLOUD.md)**
 
 ## Configuration
 

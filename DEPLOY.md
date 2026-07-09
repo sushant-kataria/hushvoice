@@ -25,6 +25,8 @@ Health check:
 curl https://YOUR-ENGINE-HOST/health
 ```
 
+**Free hosting on Oracle Cloud:** see **[docs/ORACLE_CLOUD.md](./docs/ORACLE_CLOUD.md)** — includes how to check Ampere capacity and what to do when a region is out of CPUs.
+
 **Security tip:** Put the engine behind a reverse proxy, restrict by IP or basic auth, and only allow HTTPS. The Next.js server routes call the engine with `HUSHVOICE_ENGINE_URL` (server-side).
 
 ## 2. Deploy the UI to Vercel
