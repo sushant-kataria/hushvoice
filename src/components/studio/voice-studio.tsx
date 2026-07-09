@@ -29,13 +29,9 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { LANGUAGES, getLanguage } from "@/lib/languages";
-import {
-  analyzeVoicePrint,
-  formatDuration,
-  speakWithBrowser,
-  type VoicePrint,
-} from "@/lib/audio";
+import { formatDuration } from "@/lib/audio";
 import { Waveform } from "@/components/studio/waveform";
+import { BackendStatus } from "@/components/studio/backend-status";
 import { cn } from "@/lib/utils";
 
 type VoiceProfile = {
@@ -69,7 +65,6 @@ export function VoiceStudio() {
     "Hello — this is my cloned voice speaking through HushVoice."
   );
   const [speaking, setSpeaking] = useState(false);
-  const [voicePrint, setVoicePrint] = useState<VoicePrint | null>(null);
   const [loadingVoices, setLoadingVoices] = useState(true);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -79,7 +74,6 @@ export function VoiceStudio() {
   const streamRef = useRef<MediaStream | null>(null);
 
   const lang = useMemo(() => getLanguage(language), [language]);
-  const speakLanguage = useMemo(() => getLanguage(speakLang), [speakLang]);
   const activeVoice = voices.find((v) => v.id === activeVoiceId) ?? null;
 
   const refreshVoices = useCallback(async (selectFirst = false) => {
@@ -169,12 +163,6 @@ export function VoiceStudio() {
         setAudioBlob(blob);
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(URL.createObjectURL(blob));
-        try {
-          const print = await analyzeVoicePrint(blob);
-          setVoicePrint(print);
-        } catch {
-          setVoicePrint(null);
-        }
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       };
@@ -203,7 +191,6 @@ export function VoiceStudio() {
 
   function resetRecording() {
     setAudioBlob(null);
-    setVoicePrint(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setElapsed(0);
@@ -280,51 +267,30 @@ export function VoiceStudio() {
       });
 
       const contentType = res.headers.get("Content-Type") || "";
-      if (contentType.includes("audio")) {
-        const buf = await res.arrayBuffer();
-        const url = URL.createObjectURL(
-          new Blob([buf], { type: contentType })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          (data as { error?: string }).error || "Speak failed — is Voicebox running?"
         );
-        const audio = new Audio(url);
-        audio.onended = () => {
-          setSpeaking(false);
-          URL.revokeObjectURL(url);
-        };
-        audio.onerror = () => {
-          setSpeaking(false);
-          URL.revokeObjectURL(url);
-          toast.error("Playback failed");
-        };
-        await audio.play();
-        return;
       }
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Speak failed");
-
-      // Ensure we have a voice print from the reference sample
-      let print = voicePrint;
-      if (!print && data.referenceUrl) {
-        try {
-          const audioRes = await fetch(data.referenceUrl);
-          const blob = await audioRes.blob();
-          print = await analyzeVoicePrint(blob);
-          setVoicePrint(print);
-        } catch {
-          // continue without print
-        }
+      if (!contentType.includes("audio")) {
+        throw new Error("Voicebox did not return audio. Check /api/health.");
       }
 
-      speakWithBrowser({
-        text: data.text || trimmed,
-        locale: data.speechLocale || speakLanguage.speechLocale,
-        print,
-        onEnd: () => setSpeaking(false),
-        onError: (e) => {
-          setSpeaking(false);
-          toast.error(e.message);
-        },
-      });
+      const buf = await res.arrayBuffer();
+      const url = URL.createObjectURL(new Blob([buf], { type: contentType }));
+      const audio = new Audio(url);
+      audio.onended = () => {
+        setSpeaking(false);
+        URL.revokeObjectURL(url);
+      };
+      audio.onerror = () => {
+        setSpeaking(false);
+        URL.revokeObjectURL(url);
+        toast.error("Playback failed");
+      };
+      await audio.play();
     } catch (err) {
       setSpeaking(false);
       toast.error(err instanceof Error ? err.message : "Speak failed");
@@ -379,6 +345,10 @@ export function VoiceStudio() {
           </div>
         </div>
       </header>
+
+      <div className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
+        <BackendStatus />
+      </div>
 
       <main className="mx-auto grid max-w-5xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_280px]">
         <div className="space-y-8">
@@ -529,7 +499,7 @@ export function VoiceStudio() {
                 Building your voice clone
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                Extracting pitch, tone, and cadence from your sample…
+                Uploading your sample to Voicebox and creating a local clone profile…
               </p>
               <Progress value={cloneProgress} className="mt-6 h-2" />
             </section>
@@ -544,8 +514,8 @@ export function VoiceStudio() {
                   Type anything
                 </h2>
                 <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                  Your clone replies in the selected language. Switch languages
-                  anytime — the voice stays yours.
+                  Voicebox synthesizes speech in your cloned voice. Switch
+                  languages anytime — models run on your server.
                 </p>
               </div>
               <div className="w-full max-w-[200px] space-y-1.5">
@@ -676,14 +646,22 @@ export function VoiceStudio() {
           </div>
 
           <div className="rounded-3xl border border-border/80 bg-card p-5 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">Tip</p>
+            <p className="font-medium text-foreground">Self-hosted</p>
             <p className="mt-1.5 leading-relaxed">
-              For the best clone, speak at a natural pace without background
-              noise. Optional: set{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
-                ELEVENLABS_API_KEY
-              </code>{" "}
-              for cloud-grade multilingual TTS.
+              Cloning and speech run on your{" "}
+              <a
+                href="https://github.com/jamiepine/voicebox"
+                target="_blank"
+                rel="noreferrer"
+                className="text-ocean underline-offset-2 hover:underline"
+              >
+                Voicebox
+              </a>{" "}
+              server — Chatterbox Multilingual, no API keys. Start it with{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
+                docker compose up -d voicebox
+              </code>
+              .
             </p>
           </div>
         </aside>

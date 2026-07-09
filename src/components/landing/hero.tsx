@@ -56,9 +56,9 @@ export function Hero() {
           transition={{ duration: 0.7, delay: 0.16 }}
           className="mt-5 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg"
         >
-          Record one sentence on screen. We build your voice clone. Then type
-          anything — and hear it spoken back in your voice, across twelve
-          languages.
+          Record one sentence on screen. We build your voice clone on your own
+          Voicebox server. Then type anything — and hear it spoken back in your
+          voice, across twenty-three languages. No API keys.
         </motion.p>
 
         <motion.div

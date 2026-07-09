@@ -1,0 +1,61 @@
+# HushVoice + self-hosted Voicebox (no API keys)
+#
+# Voice cloning & multilingual TTS run entirely on your machine via
+# https://github.com/jamiepine/voicebox (Chatterbox Multilingual by default).
+#
+# Usage:
+#   docker compose up -d --build voicebox   # start the local voice engine
+#   npm run dev                             # start the HushVoice web UI
+#
+# First run downloads ML models into the huggingface-cache volume (can take a while / several GB).
+
+services:
+  voicebox:
+    # Prefer a published image when available; otherwise build from upstream source.
+    image: ghcr.io/jamiepine/voicebox:latest
+    build:
+      context: https://github.com/jamiepine/voicebox.git#main
+      dockerfile: Dockerfile
+    container_name: hushvoice-voicebox
+    restart: unless-stopped
+    ports:
+      - "17493:17493"
+    volumes:
+      - voicebox-data:/app/data
+      - huggingface-cache:/home/voicebox/.cache/huggingface
+    environment:
+      - LOG_LEVEL=info
+      - NUMBA_CACHE_DIR=/tmp/numba_cache
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:17493/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+
+  # Optional: run the Next.js UI in Docker too
+  #   docker compose --profile full up -d --build
+  web:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hushvoice-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - VOICEBOX_URL=http://voicebox:17493
+      - VOICEBOX_ENGINE=chatterbox
+    depends_on:
+      voicebox:
+        condition: service_healthy
+
+volumes:
+  voicebox-data:
+  huggingface-cache:

@@ -12,12 +12,12 @@ const steps = [
   {
     icon: Sparkles,
     title: "Clone your voice",
-    body: "HushVoice builds a personal voice profile from your sample, tuned to your pitch and tone.",
+    body: "HushVoice creates a local Voicebox profile from your sample — zero-shot cloning on your machine.",
   },
   {
     icon: Type,
     title: "Type anything",
-    body: "Write in English, Hindi, Spanish, or more. Hear the reply spoken back in your cloned voice.",
+    body: "Write in English, Hindi, Spanish, or more. Voicebox synthesizes the reply in your cloned voice.",
   },
 ];
 

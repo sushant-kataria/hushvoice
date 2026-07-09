@@ -30,11 +30,12 @@ export function Languages() {
             Multilingual by design
           </p>
           <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl tracking-tight sm:text-4xl md:text-5xl">
-            One voice. Twelve languages.
+            One voice. Twenty-three languages.
           </h2>
           <p className="mt-4 text-muted-foreground sm:text-lg">
-            Clone in the language you speak. Generate speech in the language you
-            need — from Hindi and Tamil to Japanese and Arabic.
+            Powered by self-hosted Voicebox (Chatterbox Multilingual). Clone in
+            the language you speak — from Hindi and Arabic to Japanese and
+            Swahili. No API keys.
           </p>
         </motion.div>
 

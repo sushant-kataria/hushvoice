@@ -1,48 +1,87 @@
 # HushVoice
 
-Clone your voice. Speak any language.
+Clone your voice. Speak any language. **Fully self-hosted — no API keys.**
 
-Record a sentence shown on screen → generate a personal voice clone → type anything and hear it spoken back in your voice. Built with [shadcn/ui](https://ui.shadcn.com) and inspired by the craft of [Sarvam](https://www.sarvam.ai).
+Record a sentence shown on screen → create a local voice clone → type anything and hear it spoken back in your voice.
 
-## Features
+Powered by [Voicebox](https://github.com/jamiepine/voicebox) (Chatterbox Multilingual) running on your own machine. UI built with [shadcn/ui](https://ui.shadcn.com), visual craft inspired by [Sarvam](https://www.sarvam.ai).
 
-- **Record → Clone → Speak** studio flow
-- **12 languages** with localized clone prompts (English, Hindi, Spanish, French, German, Japanese, Korean, Chinese, Portuguese, Arabic, Tamil, Bengali)
-- **Voice profiles** saved locally under `.data/voices`
-- **Browser multilingual TTS** pitched to match your sample
-- **Optional ElevenLabs** cloud TTS when `ELEVENLABS_API_KEY` is set
+## How it works
+
+1. **Record** the on-screen prompt in your language  
+2. **Clone** — HushVoice creates a Voicebox profile + reference sample locally  
+3. **Speak** — type any text; Voicebox synthesizes audio in your cloned voice  
+
+No ElevenLabs. No cloud TTS keys. Models download once into a local cache.
 
 ## Quick start
 
+### 1. Start Voicebox (voice engine)
+
 ```bash
+docker compose up -d --build voicebox
+```
+
+Wait until healthy:
+
+```bash
+curl http://127.0.0.1:17493/health
+```
+
+First boot downloads ML models (several GB). Keep the container running.
+
+### 2. Start HushVoice (web UI)
+
+```bash
+cp .env.example .env.local   # optional — defaults already point at localhost:17493
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), then go to **Studio**.
+Open [http://localhost:3000/studio](http://localhost:3000/studio), allow the mic, record ≥3s, clone, then type and speak.
 
-## Optional cloud TTS
-
-Copy `.env.example` to `.env.local` and set:
+### Full stack in Docker
 
 ```bash
-ELEVENLABS_API_KEY=your_key
+docker compose --profile full up -d --build
 ```
 
-Without a key, HushVoice uses the Web Speech API with pitch/rate matched to your recording.
+## Configuration
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `VOICEBOX_URL` | `http://127.0.0.1:17493` | Self-hosted Voicebox base URL |
+| `VOICEBOX_ENGINE` | `chatterbox` | TTS engine (`chatterbox` recommended for multilingual cloning) |
+
+## Languages
+
+Aligned with Voicebox Chatterbox Multilingual: English, Hindi, Spanish, French, German, Japanese, Korean, Chinese, Portuguese, Arabic, Italian, Russian, Dutch, Turkish, Polish, Swedish, Danish, Finnish, Greek, Hebrew, Malay, Norwegian, Swahili.
 
 ## Stack
 
-- Next.js (App Router) + TypeScript
-- Tailwind CSS v4 + shadcn/ui (base-nova)
-- Framer Motion
-- Local filesystem voice store (Node runtime API routes)
+- **UI:** Next.js App Router + TypeScript + Tailwind v4 + shadcn/ui  
+- **Voice engine:** [Voicebox](https://github.com/jamiepine/voicebox) (FastAPI) — local zero-shot cloning  
+- **Default model:** Chatterbox Multilingual (ResembleAI)  
+
+## API (HushVoice → Voicebox)
+
+| HushVoice | Voicebox |
+| --- | --- |
+| `POST /api/clone` | `POST /profiles` + `POST /profiles/{id}/samples` |
+| `POST /api/speak` | `POST /generate` → poll → `GET /audio/{id}` |
+| `GET /api/voices` | `GET /profiles` |
+| `GET /api/health` | `GET /health` |
 
 ## Scripts
 
-| Command       | Description        |
-| ------------- | ------------------ |
-| `npm run dev` | Start dev server   |
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start web UI |
 | `npm run build` | Production build |
-| `npm run start` | Start production |
-| `npm run lint`  | ESLint           |
+| `npm run start` | Start production UI |
+| `npm run lint` | ESLint |
+| `docker compose up -d voicebox` | Start local voice engine |
+
+## Hardware notes
+
+Voicebox recommends several GB of RAM (compose limits default to 8GB). CPU works; GPU images (`latest-cuda` / ROCm overlay) are faster for production. See [Voicebox docs](https://github.com/jamiepine/voicebox).
