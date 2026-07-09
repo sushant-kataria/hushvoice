@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "voicebox": "docker compose up -d --build voicebox",
-    "voicebox:logs": "docker compose logs -f voicebox"
+    "engine": "docker compose up -d --build engine",
+    "engine:logs": "docker compose logs -f engine"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

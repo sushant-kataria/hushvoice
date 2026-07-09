@@ -272,11 +272,11 @@ export function VoiceStudio() {
       };
       if (!res.ok) {
         throw new Error(
-          startData.error || "Speak failed — is Voicebox running?"
+          startData.error || "Speak failed — is the HushVoice engine running?"
         );
       }
       if (!startData.generationId) {
-        throw new Error("Voicebox did not start a generation. Check /api/health.");
+        throw new Error("Engine did not start a generation. Check /api/health.");
       }
 
       // Poll until complete (Vercel-safe — short requests)
@@ -294,7 +294,7 @@ export function VoiceStudio() {
           throw new Error(status.error || "Failed to check generation status");
         }
         if (status.status === "failed") {
-          throw new Error(status.error || "Voicebox generation failed");
+          throw new Error(status.error || "Speech generation failed");
         }
         if (status.status === "completed") {
           const audioRes = await fetch(
@@ -537,7 +537,7 @@ export function VoiceStudio() {
                 Building your voice clone
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                Uploading your sample to Voicebox and creating a local clone profile…
+                Uploading your sample and creating a local clone profile…
               </p>
               <Progress value={cloneProgress} className="mt-6 h-2" />
             </section>
@@ -552,7 +552,7 @@ export function VoiceStudio() {
                   Type anything
                 </h2>
                 <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                  Voicebox synthesizes speech in your cloned voice. Switch
+                  HushVoice synthesizes speech in your cloned voice. Switch
                   languages anytime — models run on your server.
                 </p>
               </div>
@@ -686,18 +686,10 @@ export function VoiceStudio() {
           <div className="rounded-3xl border border-border/80 bg-card p-5 text-sm text-muted-foreground">
             <p className="font-medium text-foreground">Self-hosted</p>
             <p className="mt-1.5 leading-relaxed">
-              Cloning and speech run on your{" "}
-              <a
-                href="https://github.com/jamiepine/voicebox"
-                target="_blank"
-                rel="noreferrer"
-                className="text-ocean underline-offset-2 hover:underline"
-              >
-                Voicebox
-              </a>{" "}
-              server — Chatterbox Multilingual, no API keys. Start it with{" "}
+              Cloning and speech run on your HushVoice engine — Chatterbox
+              Multilingual, no API keys. Start it with{" "}
               <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
-                docker compose up -d voicebox
+                docker compose up -d engine
               </code>
               .
             </p>

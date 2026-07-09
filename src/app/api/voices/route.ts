@@ -3,8 +3,8 @@ import {
   deleteProfile,
   listProfiles,
   listProfileSamples,
-  VoiceboxError,
-} from "@/lib/voicebox";
+  EngineError,
+} from "@/lib/engine";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,6 @@ export async function GET() {
           let durationMs = 0;
           try {
             const samples = await listProfileSamples(p.id);
-            // Voicebox doesn't expose duration on samples; keep 0 unless known
             durationMs = samples.length ? 0 : 0;
           } catch {
             // ignore
@@ -36,10 +35,13 @@ export async function GET() {
         })
     );
 
-    return NextResponse.json({ voices, backend: "voicebox" });
+    return NextResponse.json({ voices, backend: "hushvoice" });
   } catch (err) {
-    if (err instanceof VoiceboxError) {
-      return NextResponse.json({ error: err.message, voices: [] }, { status: err.status });
+    if (err instanceof EngineError) {
+      return NextResponse.json(
+        { error: err.message, voices: [] },
+        { status: err.status }
+      );
     }
     console.error("list voices", err);
     return NextResponse.json(
@@ -59,7 +61,7 @@ export async function DELETE(request: Request) {
     await deleteProfile(id);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    if (err instanceof VoiceboxError) {
+    if (err instanceof EngineError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     return NextResponse.json({ error: "Failed to delete voice" }, { status: 500 });

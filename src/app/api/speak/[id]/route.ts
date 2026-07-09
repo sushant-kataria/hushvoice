@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import {
   fetchGenerationAudio,
   getGeneration,
-  VoiceboxError,
-} from "@/lib/voicebox";
+  EngineError,
+} from "@/lib/engine";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -42,7 +42,7 @@ export async function GET(
         headers: {
           "Content-Type": contentType,
           "X-HushVoice-Engine": gen.engine || "chatterbox",
-          "X-HushVoice-Backend": "voicebox",
+          "X-HushVoice-Backend": "hushvoice",
           "X-HushVoice-Generation-Id": gen.id,
         },
       });
@@ -57,7 +57,7 @@ export async function GET(
       language: gen.language,
     });
   } catch (err) {
-    if (err instanceof VoiceboxError) {
+    if (err instanceof EngineError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     return NextResponse.json(

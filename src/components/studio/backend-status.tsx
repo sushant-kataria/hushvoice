@@ -8,7 +8,7 @@ type Health = {
   hushvoice?: string;
   engine?: string;
   apiKeysRequired?: boolean;
-  voicebox?: {
+  engineHealth?: {
     ok?: boolean;
     url?: string;
     error?: string;
@@ -26,7 +26,8 @@ export function BackendStatus({ className }: { className?: string }) {
         const data = (await res.json()) as Health;
         if (!cancelled) setHealth(data);
       } catch {
-        if (!cancelled) setHealth({ voicebox: { ok: false, error: "unreachable" } });
+        if (!cancelled)
+          setHealth({ engineHealth: { ok: false, error: "unreachable" } });
       }
     };
     void load();
@@ -37,7 +38,7 @@ export function BackendStatus({ className }: { className?: string }) {
     };
   }, []);
 
-  const ok = Boolean(health?.voicebox?.ok);
+  const ok = Boolean(health?.engineHealth?.ok);
 
   return (
     <div
@@ -56,13 +57,13 @@ export function BackendStatus({ className }: { className?: string }) {
             ok ? "bg-emerald-500" : "bg-destructive"
           )}
         />
-        {ok ? "Voicebox online" : "Voicebox offline"}
+        {ok ? "Engine online" : "Engine offline"}
       </Badge>
       <span className="truncate">
         {ok
           ? `Self-hosted · ${health?.engine || "chatterbox"} · no API keys`
-          : health?.voicebox?.error ||
-            "Start with docker compose up -d voicebox"}
+          : health?.engineHealth?.error ||
+            "Start with docker compose up -d engine"}
       </span>
     </div>
   );

@@ -3,8 +3,8 @@ import {
   fetchSampleAudio,
   getProfile,
   listProfileSamples,
-  VoiceboxError,
-} from "@/lib/voicebox";
+  EngineError,
+} from "@/lib/engine";
 
 export const runtime = "nodejs";
 
@@ -33,7 +33,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    if (err instanceof VoiceboxError) {
+    if (err instanceof EngineError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     return NextResponse.json({ error: "Audio missing" }, { status: 404 });

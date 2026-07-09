@@ -10,8 +10,8 @@ export type Language = {
 };
 
 /**
- * Languages aligned with Voicebox Chatterbox Multilingual (23 langs).
- * Tamil/Bengali fall back to Hindi on the Voicebox engine.
+ * Languages aligned with Chatterbox Multilingual (23 langs).
+ * Tamil/Bengali fall back to Hindi on the engine.
  */
 export const LANGUAGES: Language[] = [
   {

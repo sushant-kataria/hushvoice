@@ -4,17 +4,17 @@ import {
   fetchGenerationAudio,
   getProfile,
   startGeneration,
-  toVoiceboxLanguage,
-  VoiceboxError,
+  toEngineLanguage,
+  EngineError,
   waitForGeneration,
-} from "@/lib/voicebox";
+} from "@/lib/engine";
 
 export const runtime = "nodejs";
 /** Allow longer waits on Pro / local; Hobby still caps lower. Prefer async poll. */
 export const maxDuration = 60;
 
 /**
- * Start (and optionally wait for) speech generation on self-hosted Voicebox.
+ * Start (and optionally wait for) speech generation on the HushVoice engine.
  *
  * Body: { voiceId, text, language?, wait?: boolean }
  * - wait=false (default): returns { generationId, status } immediately — use on Vercel
@@ -51,12 +51,12 @@ export async function POST(request: Request) {
 
     const languageCode = body.language || profile.language;
     const language = getLanguage(languageCode);
-    const vbLang = toVoiceboxLanguage(languageCode);
+    const engineLang = toEngineLanguage(languageCode);
 
     const generation = await startGeneration({
       profileId: profile.id,
       text,
-      language: vbLang,
+      language: engineLang,
       engine: profile.default_engine || "chatterbox",
     });
 
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
         status: generation.status || "generating",
         language: language.code,
         engine: generation.engine || profile.default_engine || "chatterbox",
-        backend: "voicebox",
+        backend: "hushvoice",
       });
     }
 
@@ -84,17 +84,17 @@ export async function POST(request: Request) {
         "Content-Type": contentType,
         "X-HushVoice-Engine": done.engine || "chatterbox",
         "X-HushVoice-Language": language.code,
-        "X-HushVoice-Backend": "voicebox",
+        "X-HushVoice-Backend": "hushvoice",
         "X-HushVoice-Generation-Id": done.id,
       },
     });
   } catch (err) {
-    if (err instanceof VoiceboxError) {
+    if (err instanceof EngineError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     console.error("speak error", err);
     return NextResponse.json(
-      { error: "Failed to generate speech with Voicebox" },
+      { error: "Failed to generate speech" },
       { status: 500 }
     );
   }

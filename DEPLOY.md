@@ -5,18 +5,19 @@ HushVoice is two parts:
 | Piece | Where it runs | Notes |
 | --- | --- | --- |
 | **Web UI + API routes** | **Vercel** | Next.js app |
-| **Voicebox** (clone + TTS) | **Your always-on server** | Docker, GPU/CPU VPS — **not** Vercel |
+| **HushVoice engine** (clone + TTS) | **Your always-on server** | Docker, GPU/CPU VPS — **not** Vercel |
 
-Vercel cannot run Voicebox (GPU/CPU models, long jobs, Docker). Point the Vercel app at a public Voicebox URL.
+Vercel cannot run the ML engine (GPU/CPU models, long jobs, Docker). Point the Vercel app at a public engine URL.
 
-## 1. Host Voicebox (required)
+## 1. Host the HushVoice engine (required)
 
 On a VPS / home server with Docker (8GB+ RAM recommended):
 
 ```bash
-git clone https://github.com/jamiepine/voicebox.git
-cd voicebox
-docker compose up -d --build
+# Set ENGINE_SOURCE_URL to a compatible FastAPI voice-stack git repo
+export ENGINE_SOURCE_URL="https://…"
+
+docker compose up -d --build engine
 ```
 
 Expose port `17493` publicly (or via Cloudflare Tunnel / Tailscale Funnel / nginx + TLS).
@@ -24,10 +25,10 @@ Expose port `17493` publicly (or via Cloudflare Tunnel / Tailscale Funnel / ngin
 Health check:
 
 ```bash
-curl https://YOUR-VOICEBOX-HOST/health
+curl https://YOUR-ENGINE-HOST/health
 ```
 
-**Security tip:** Put Voicebox behind a reverse proxy, restrict by IP or basic auth, and only allow HTTPS. HushVoice’s server routes call Voicebox with `VOICEBOX_URL` (server-side), so the browser never needs the Voicebox URL if you keep it private to Vercel’s network — but for a simple setup, a public HTTPS URL is fine.
+**Security tip:** Put the engine behind a reverse proxy, restrict by IP or basic auth, and only allow HTTPS. The Next.js server routes call the engine with `HUSHVOICE_ENGINE_URL` (server-side).
 
 ## 2. Deploy the UI to Vercel
 
@@ -40,8 +41,8 @@ curl https://YOUR-VOICEBOX-HOST/health
 
 | Name | Value | Environment |
 | --- | --- | --- |
-| `VOICEBOX_URL` | `https://YOUR-VOICEBOX-HOST` | Production, Preview |
-| `VOICEBOX_ENGINE` | `chatterbox` | Production, Preview |
+| `HUSHVOICE_ENGINE_URL` | `https://YOUR-ENGINE-HOST` | Production, Preview |
+| `HUSHVOICE_TTS_ENGINE` | `chatterbox` | Production, Preview |
 
 5. Deploy
 
@@ -51,9 +52,9 @@ curl https://YOUR-VOICEBOX-HOST/health
 npm i -g vercel
 vercel login
 vercel link
-vercel env add VOICEBOX_URL
-# paste https://YOUR-VOICEBOX-HOST
-vercel env add VOICEBOX_ENGINE
+vercel env add HUSHVOICE_ENGINE_URL
+# paste https://YOUR-ENGINE-HOST
+vercel env add HUSHVOICE_TTS_ENGINE
 # paste chatterbox
 vercel --prod
 ```
@@ -64,7 +65,7 @@ vercel --prod
 curl https://YOUR-VERCEL-APP.vercel.app/api/health
 ```
 
-You should see `"voicebox": { "ok": true, ... }` and `"apiKeysRequired": false`.
+You should see `"engineHealth": { "ok": true, ... }` and `"apiKeysRequired": false`.
 
 Then open `/studio`, record a prompt, clone, and speak.
 
@@ -72,8 +73,8 @@ Then open `/studio`, record a prompt, clone, and speak.
 
 ```bash
 # .env.local
-VOICEBOX_URL=https://YOUR-VOICEBOX-HOST
-VOICEBOX_ENGINE=chatterbox
+HUSHVOICE_ENGINE_URL=https://YOUR-ENGINE-HOST
+HUSHVOICE_TTS_ENGINE=chatterbox
 
 npm run dev
 ```
@@ -82,17 +83,17 @@ npm run dev
 
 | Symptom | Fix |
 | --- | --- |
-| Studio: “Voicebox offline” | `VOICEBOX_URL` wrong, Voicebox down, or firewall blocking Vercel → your server |
-| Clone/speak timeouts | Voicebox too slow / cold model load — keep container warm; first request downloads models |
-| CORS errors | Shouldn’t happen — HushVoice proxies via `/api/*`. Don’t call Voicebox from the browser |
+| Studio: “Engine offline” | `HUSHVOICE_ENGINE_URL` wrong, engine down, or firewall blocking Vercel → your server |
+| Clone/speak timeouts | Engine too slow / cold model load — keep container warm; first request downloads models |
+| CORS errors | Shouldn’t happen — HushVoice proxies via `/api/*`. Don’t call the engine from the browser |
 | Hobby function timeout | Speak uses short poll requests (`POST /api/speak` then `GET /api/speak/:id`) — should fit Hobby limits |
 
 ## Architecture
 
 ```
 Browser → Vercel (Next.js /api/clone, /api/speak, /api/voices)
-                ↓ VOICEBOX_URL
-         Your server (Voicebox :17493)
+                ↓ HUSHVOICE_ENGINE_URL
+         Your server (HushVoice engine :17493)
                 ↓
          Local Chatterbox models (no API keys)
 ```

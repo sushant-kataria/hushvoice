@@ -4,9 +4,9 @@ import {
   addProfileSample,
   createProfile,
   deleteProfile,
-  toVoiceboxLanguage,
-  VoiceboxError,
-} from "@/lib/voicebox";
+  toEngineLanguage,
+  EngineError,
+} from "@/lib/engine";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -15,7 +15,7 @@ const MIN_DURATION_MS = 2500;
 const MAX_BYTES = 12 * 1024 * 1024;
 
 /**
- * Create a Voicebox cloned profile from the user's recording.
+ * Create a HushVoice cloned profile from the user's recording.
  * Entirely self-hosted — no third-party API keys.
  */
 export async function POST(request: Request) {
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const vbLang = toVoiceboxLanguage(language);
+    const engineLang = toEngineLanguage(language);
     const mime = audio.type || "audio/webm";
     const ext = mime.includes("mp4")
       ? "m4a"
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
     const profile = await createProfile({
       name: name.trim() || "My Voice",
-      language: vbLang,
+      language: engineLang,
       description: prompt,
       default_engine: "chatterbox",
     });
@@ -89,10 +89,10 @@ export async function POST(request: Request) {
         createdAt: profile.created_at,
         durationMs: durationMs || 0,
         engine: "chatterbox",
-        backend: "voicebox",
+        backend: "hushvoice",
       },
       message:
-        "Voice clone ready on your Voicebox server. Type anything and hear it in your voice.",
+        "Voice clone ready on your HushVoice engine. Type anything and hear it in your voice.",
     });
   } catch (err) {
     if (createdProfileId) {
@@ -103,12 +103,12 @@ export async function POST(request: Request) {
       }
     }
 
-    if (err instanceof VoiceboxError) {
+    if (err instanceof EngineError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     console.error("clone error", err);
     return NextResponse.json(
-      { error: "Failed to create voice clone on Voicebox" },
+      { error: "Failed to create voice clone" },
       { status: 500 }
     );
   }

@@ -33,7 +33,7 @@ export function Languages() {
             One voice. Twenty-three languages.
           </h2>
           <p className="mt-4 text-muted-foreground sm:text-lg">
-            Powered by self-hosted Voicebox (Chatterbox Multilingual). Clone in
+            Powered by your self-hosted HushVoice engine (Chatterbox Multilingual). Clone in
             the language you speak — from Hindi and Arabic to Japanese and
             Swahili. No API keys.
           </p>

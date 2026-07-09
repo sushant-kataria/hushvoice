@@ -1,16 +1,16 @@
 /**
- * Client for a self-hosted Voicebox server (https://github.com/jamiepine/voicebox).
- * All cloning + TTS runs locally — no third-party API keys.
+ * Client for the self-hosted HushVoice engine.
+ * Cloning + TTS run on your always-on server — no third-party API keys.
  */
 
-export const VOICEBOX_URL = (
-  process.env.VOICEBOX_URL || "http://127.0.0.1:17493"
+export const ENGINE_URL = (
+  process.env.HUSHVOICE_ENGINE_URL || "http://127.0.0.1:17493"
 ).replace(/\/$/, "");
 
-/** Default engine: Chatterbox Multilingual — zero-shot clone, 23 languages. */
-export const DEFAULT_ENGINE = process.env.VOICEBOX_ENGINE || "chatterbox";
+/** Default TTS model family for zero-shot multilingual cloning. */
+export const DEFAULT_ENGINE = process.env.HUSHVOICE_TTS_ENGINE || "chatterbox";
 
-export type VoiceboxProfile = {
+export type EngineProfile = {
   id: string;
   name: string;
   description?: string | null;
@@ -23,14 +23,14 @@ export type VoiceboxProfile = {
   updated_at?: string;
 };
 
-export type VoiceboxSample = {
+export type EngineSample = {
   id: string;
   profile_id: string;
   audio_path: string;
   reference_text: string;
 };
 
-export type VoiceboxGeneration = {
+export type EngineGeneration = {
   id: string;
   profile_id: string;
   text: string;
@@ -43,11 +43,11 @@ export type VoiceboxGeneration = {
   created_at?: string;
 };
 
-export class VoiceboxError extends Error {
+export class EngineError extends Error {
   status: number;
   constructor(message: string, status = 502) {
     super(message);
-    this.name = "VoiceboxError";
+    this.name = "EngineError";
     this.status = status;
   }
 }
@@ -69,14 +69,14 @@ async function parseError(res: Response): Promise<string> {
   } catch {
     // ignore
   }
-  return res.statusText || `Voicebox error (${res.status})`;
+  return res.statusText || `HushVoice engine error (${res.status})`;
 }
 
-export async function voiceboxFetch(
+export async function engineFetch(
   path: string,
   init?: RequestInit
 ): Promise<Response> {
-  const url = `${VOICEBOX_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  const url = `${ENGINE_URL}${path.startsWith("/") ? path : `/${path}`}`;
   try {
     return await fetch(url, {
       ...init,
@@ -86,14 +86,14 @@ export async function voiceboxFetch(
       cache: "no-store",
     });
   } catch {
-    throw new VoiceboxError(
-      `Cannot reach Voicebox at ${VOICEBOX_URL}. Start it with: docker compose up -d voicebox`,
+    throw new EngineError(
+      `Cannot reach HushVoice engine at ${ENGINE_URL}. Start it with: docker compose up -d engine`,
       503
     );
   }
 }
 
-export async function getVoiceboxHealth(): Promise<{
+export async function getEngineHealth(): Promise<{
   ok: boolean;
   url: string;
   status?: number;
@@ -101,36 +101,34 @@ export async function getVoiceboxHealth(): Promise<{
   error?: string;
 }> {
   try {
-    const res = await voiceboxFetch("/health");
+    const res = await engineFetch("/health");
     const body = await res.json().catch(() => null);
     return {
       ok: res.ok,
-      url: VOICEBOX_URL,
+      url: ENGINE_URL,
       status: res.status,
       body,
     };
   } catch (err) {
     return {
       ok: false,
-      url: VOICEBOX_URL,
+      url: ENGINE_URL,
       error: err instanceof Error ? err.message : "Unreachable",
     };
   }
 }
 
-export async function listProfiles(): Promise<VoiceboxProfile[]> {
-  const res = await voiceboxFetch("/profiles");
-  if (!res.ok) throw new VoiceboxError(await parseError(res), res.status);
-  return (await res.json()) as VoiceboxProfile[];
+export async function listProfiles(): Promise<EngineProfile[]> {
+  const res = await engineFetch("/profiles");
+  if (!res.ok) throw new EngineError(await parseError(res), res.status);
+  return (await res.json()) as EngineProfile[];
 }
 
-export async function getProfile(
-  id: string
-): Promise<VoiceboxProfile | null> {
-  const res = await voiceboxFetch(`/profiles/${id}`);
+export async function getProfile(id: string): Promise<EngineProfile | null> {
+  const res = await engineFetch(`/profiles/${id}`);
   if (res.status === 404) return null;
-  if (!res.ok) throw new VoiceboxError(await parseError(res), res.status);
-  return (await res.json()) as VoiceboxProfile;
+  if (!res.ok) throw new EngineError(await parseError(res), res.status);
+  return (await res.json()) as EngineProfile;
 }
 
 export async function createProfile(input: {
@@ -138,8 +136,8 @@ export async function createProfile(input: {
   language: string;
   description?: string;
   default_engine?: string;
-}): Promise<VoiceboxProfile> {
-  const res = await voiceboxFetch("/profiles", {
+}): Promise<EngineProfile> {
+  const res = await engineFetch("/profiles", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -150,14 +148,14 @@ export async function createProfile(input: {
       default_engine: input.default_engine ?? DEFAULT_ENGINE,
     }),
   });
-  if (!res.ok) throw new VoiceboxError(await parseError(res), res.status);
-  return (await res.json()) as VoiceboxProfile;
+  if (!res.ok) throw new EngineError(await parseError(res), res.status);
+  return (await res.json()) as EngineProfile;
 }
 
 export async function deleteProfile(id: string): Promise<void> {
-  const res = await voiceboxFetch(`/profiles/${id}`, { method: "DELETE" });
+  const res = await engineFetch(`/profiles/${id}`, { method: "DELETE" });
   if (res.status === 404) return;
-  if (!res.ok) throw new VoiceboxError(await parseError(res), res.status);
+  if (!res.ok) throw new EngineError(await parseError(res), res.status);
 }
 
 export async function addProfileSample(input: {
@@ -166,7 +164,7 @@ export async function addProfileSample(input: {
   filename: string;
   contentType: string;
   referenceText: string;
-}): Promise<VoiceboxSample> {
+}): Promise<EngineSample> {
   const form = new FormData();
   const blob =
     input.audio instanceof Blob
@@ -175,20 +173,20 @@ export async function addProfileSample(input: {
   form.append("file", blob, input.filename);
   form.append("reference_text", input.referenceText);
 
-  const res = await voiceboxFetch(`/profiles/${input.profileId}/samples`, {
+  const res = await engineFetch(`/profiles/${input.profileId}/samples`, {
     method: "POST",
     body: form,
   });
-  if (!res.ok) throw new VoiceboxError(await parseError(res), res.status);
-  return (await res.json()) as VoiceboxSample;
+  if (!res.ok) throw new EngineError(await parseError(res), res.status);
+  return (await res.json()) as EngineSample;
 }
 
 export async function listProfileSamples(
   profileId: string
-): Promise<VoiceboxSample[]> {
-  const res = await voiceboxFetch(`/profiles/${profileId}/samples`);
-  if (!res.ok) throw new VoiceboxError(await parseError(res), res.status);
-  return (await res.json()) as VoiceboxSample[];
+): Promise<EngineSample[]> {
+  const res = await engineFetch(`/profiles/${profileId}/samples`);
+  if (!res.ok) throw new EngineError(await parseError(res), res.status);
+  return (await res.json()) as EngineSample[];
 }
 
 export async function startGeneration(input: {
@@ -196,8 +194,8 @@ export async function startGeneration(input: {
   text: string;
   language: string;
   engine?: string;
-}): Promise<VoiceboxGeneration> {
-  const res = await voiceboxFetch("/generate", {
+}): Promise<EngineGeneration> {
+  const res = await engineFetch("/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -208,48 +206,45 @@ export async function startGeneration(input: {
       normalize: true,
     }),
   });
-  if (!res.ok) throw new VoiceboxError(await parseError(res), res.status);
-  return (await res.json()) as VoiceboxGeneration;
+  if (!res.ok) throw new EngineError(await parseError(res), res.status);
+  return (await res.json()) as EngineGeneration;
 }
 
 export async function getGeneration(
   id: string
-): Promise<VoiceboxGeneration | null> {
-  const res = await voiceboxFetch(`/history/${id}`);
+): Promise<EngineGeneration | null> {
+  const res = await engineFetch(`/history/${id}`);
   if (res.status === 404) return null;
-  if (!res.ok) throw new VoiceboxError(await parseError(res), res.status);
-  return (await res.json()) as VoiceboxGeneration;
+  if (!res.ok) throw new EngineError(await parseError(res), res.status);
+  return (await res.json()) as EngineGeneration;
 }
 
 /** Poll until generation completes or fails. */
 export async function waitForGeneration(
   id: string,
   opts?: { timeoutMs?: number; intervalMs?: number }
-): Promise<VoiceboxGeneration> {
+): Promise<EngineGeneration> {
   const timeoutMs = opts?.timeoutMs ?? 10 * 60 * 1000;
   const intervalMs = opts?.intervalMs ?? 1000;
   const started = Date.now();
 
   while (Date.now() - started < timeoutMs) {
     const gen = await getGeneration(id);
-    if (!gen) throw new VoiceboxError("Generation not found", 404);
+    if (!gen) throw new EngineError("Generation not found", 404);
     if (gen.status === "completed") return gen;
     if (gen.status === "failed") {
-      throw new VoiceboxError(
-        gen.error || "Voicebox generation failed",
-        500
-      );
+      throw new EngineError(gen.error || "Speech generation failed", 500);
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
-  throw new VoiceboxError("Voicebox generation timed out", 504);
+  throw new EngineError("Speech generation timed out", 504);
 }
 
 export async function fetchGenerationAudio(
   generationId: string
 ): Promise<{ buffer: ArrayBuffer; contentType: string }> {
-  const res = await voiceboxFetch(`/audio/${generationId}`);
-  if (!res.ok) throw new VoiceboxError(await parseError(res), res.status);
+  const res = await engineFetch(`/audio/${generationId}`);
+  if (!res.ok) throw new EngineError(await parseError(res), res.status);
   const contentType = res.headers.get("Content-Type") || "audio/wav";
   return { buffer: await res.arrayBuffer(), contentType };
 }
@@ -257,14 +252,14 @@ export async function fetchGenerationAudio(
 export async function fetchSampleAudio(
   sampleId: string
 ): Promise<{ buffer: ArrayBuffer; contentType: string }> {
-  const res = await voiceboxFetch(`/samples/${sampleId}`);
-  if (!res.ok) throw new VoiceboxError(await parseError(res), res.status);
+  const res = await engineFetch(`/samples/${sampleId}`);
+  if (!res.ok) throw new EngineError(await parseError(res), res.status);
   const contentType = res.headers.get("Content-Type") || "audio/wav";
   return { buffer: await res.arrayBuffer(), contentType };
 }
 
-/** Map HushVoice language codes to Voicebox-supported codes. */
-export function toVoiceboxLanguage(code: string): string {
+/** Normalize UI language codes to engine-supported codes. */
+export function toEngineLanguage(code: string): string {
   const map: Record<string, string> = {
     en: "en",
     zh: "zh",
@@ -289,7 +284,6 @@ export function toVoiceboxLanguage(code: string): string {
     sv: "sv",
     sw: "sw",
     tr: "tr",
-    // Closest fallbacks for codes we show in UI but Voicebox maps differently
     ta: "hi",
     bn: "hi",
   };

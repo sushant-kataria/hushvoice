@@ -1,28 +1,31 @@
-# HushVoice + self-hosted Voicebox (no API keys)
+# HushVoice — self-hosted voice engine + optional web UI (no API keys)
 #
-# Voice cloning & multilingual TTS run entirely on your machine via
-# https://github.com/jamiepine/voicebox (Chatterbox Multilingual by default).
+# The engine service is your always-on clone/TTS server.
+# The web UI (Vercel or local) talks to it via HUSHVOICE_ENGINE_URL.
 #
 # Usage:
-#   docker compose up -d --build voicebox   # start the local voice engine
-#   npm run dev                             # start the HushVoice web UI
+#   docker compose up -d --build engine   # start the voice engine
+#   npm run dev                           # start the web UI
 #
-# First run downloads ML models into the huggingface-cache volume (can take a while / several GB).
+# First run downloads ML models into the model-cache volume (several GB).
 
 services:
-  voicebox:
-    # Prefer a published image when available; otherwise build from upstream source.
-    image: ghcr.io/jamiepine/voicebox:latest
+  engine:
+    # Build the HushVoice engine image (compatible FastAPI voice stack).
+    # Override image/build in production as needed.
+    image: hushvoice-engine:latest
     build:
-      context: https://github.com/jamiepine/voicebox.git#main
+      context: ./engine
       dockerfile: Dockerfile
-    container_name: hushvoice-voicebox
+      args:
+        ENGINE_SOURCE_URL: ${ENGINE_SOURCE_URL}
+    container_name: hushvoice-engine
     restart: unless-stopped
     ports:
       - "17493:17493"
     volumes:
-      - voicebox-data:/app/data
-      - huggingface-cache:/home/voicebox/.cache/huggingface
+      - hushvoice-data:/app/data
+      - hushvoice-model-cache:/home/hushvoice/.cache/huggingface
     environment:
       - LOG_LEVEL=info
       - NUMBA_CACHE_DIR=/tmp/numba_cache
@@ -50,12 +53,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VOICEBOX_URL=http://voicebox:17493
-      - VOICEBOX_ENGINE=chatterbox
+      - HUSHVOICE_ENGINE_URL=http://engine:17493
+      - HUSHVOICE_TTS_ENGINE=chatterbox
     depends_on:
-      voicebox:
+      engine:
         condition: service_healthy
 
 volumes:
-  voicebox-data:
-  huggingface-cache:
+  hushvoice-data:
+  hushvoice-model-cache:

@@ -57,7 +57,7 @@ export function Hero() {
           className="mt-5 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg"
         >
           Record one sentence on screen. We build your voice clone on your own
-          Voicebox server. Then type anything — and hear it spoken back in your
+          HushVoice engine. Then type anything — and hear it spoken back in your
           voice, across twenty-three languages. No API keys.
         </motion.p>
 
