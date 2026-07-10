@@ -9,8 +9,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DOCKER_BUILD=1
-RUN npm run build
+# Standalone output is for Docker only (not used on Vercel).
+RUN node -e "const fs=require('fs');const p='next.config.ts';let s=fs.readFileSync(p,'utf8');s=s.replace('const nextConfig: NextConfig = {};','const nextConfig: NextConfig = { output: \"standalone\" };');fs.writeFileSync(p,s);" \
+  && npm run build
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
