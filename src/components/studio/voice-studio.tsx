@@ -66,12 +66,14 @@ export function VoiceStudio() {
   );
   const [speaking, setSpeaking] = useState(false);
   const [loadingVoices, setLoadingVoices] = useState(true);
+  const [readyAudioUrl, setReadyAudioUrl] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
   const startedAtRef = useRef(0);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   const lang = useMemo(() => getLanguage(language), [language]);
   const activeVoice = voices.find((v) => v.id === activeVoiceId) ?? null;
@@ -243,6 +245,42 @@ export function VoiceStudio() {
     }
   }
 
+  async function unlockAudio() {
+    try {
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+      if (audioCtxRef.current.state === "suspended") {
+        await audioCtxRef.current.resume();
+      }
+    } catch {
+      // ignore — Play button fallback still works
+    }
+  }
+
+  async function playAudioUrl(url: string) {
+    const audio = new Audio(url);
+    audio.onended = () => {
+      setSpeaking(false);
+    };
+    audio.onerror = () => {
+      setSpeaking(false);
+      toast.error("Playback failed");
+    };
+    try {
+      await audio.play();
+      setSpeaking(true);
+    } catch {
+      // Browser blocked autoplay after the long generate wait — user must click Play
+      setSpeaking(false);
+      setReadyAudioUrl(url);
+      toast.message("Audio ready — tap Play to hear it");
+    }
+  }
+
   async function handleSpeak() {
     if (!activeVoiceId) {
       toast.error("Create or select a voice clone first.");
@@ -252,6 +290,12 @@ export function VoiceStudio() {
     if (!trimmed) {
       toast.error("Type something to speak.");
       return;
+    }
+
+    await unlockAudio();
+    if (readyAudioUrl) {
+      URL.revokeObjectURL(readyAudioUrl);
+      setReadyAudioUrl(null);
     }
 
     setSpeaking(true);
@@ -318,17 +362,7 @@ export function VoiceStudio() {
         throw new Error("Generation timed out. Try a shorter sentence.");
       }
 
-      const audio = new Audio(audioUrl);
-      audio.onended = () => {
-        setSpeaking(false);
-        URL.revokeObjectURL(audioUrl!);
-      };
-      audio.onerror = () => {
-        setSpeaking(false);
-        URL.revokeObjectURL(audioUrl!);
-        toast.error("Playback failed");
-      };
-      await audio.play();
+      await playAudioUrl(audioUrl);
     } catch (err) {
       setSpeaking(false);
       toast.error(err instanceof Error ? err.message : "Speak failed");
@@ -608,10 +642,29 @@ export function VoiceStudio() {
                   )}
                   {speaking ? "Speaking…" : "Speak in my voice"}
                 </Button>
+                {readyAudioUrl && (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-11 px-5"
+                    onClick={() => {
+                      void playAudioUrl(readyAudioUrl);
+                    }}
+                  >
+                    <Play data-icon="inline-start" />
+                    Play audio
+                  </Button>
+                )}
               </div>
-              {speaking && (
+              {(speaking || readyAudioUrl) && (
                 <div className="pt-2">
-                  <Waveform active bars={32} />
+                  <Waveform active={speaking} bars={32} />
+                  {readyAudioUrl && !speaking && (
+                    <p className="mt-2 text-center text-xs text-muted-foreground">
+                      Generation finished. Tap Play audio if it didn’t start
+                      automatically.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
