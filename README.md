@@ -29,6 +29,12 @@ npm run dev
 
 Open [http://localhost:3000/studio](http://localhost:3000/studio).
 
+## Use as a web app (Vercel + this Mac Mini)
+
+Host the **UI on Vercel** and keep the **engine on the Mac Mini** (via Cloudflare Tunnel):
+
+**[docs/VERCEL_MAC_MINI.md](./docs/VERCEL_MAC_MINI.md)**
+
 ## Configuration
 
 | Variable | Default | Description |
