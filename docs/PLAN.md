@@ -59,115 +59,129 @@ Browser → POST /api/translate { text, source, target }
 - Auto-detect source language vs fixed English default  
 - Whether to store translation history per voice  
 
-### 2. Pricing strategy — demo cloud + lifetime local unlock ($9.99)
+### 2. Pricing strategy (revised) — sell hosted access, not the engine binary
 
-**Goal:** Let anyone try HushVoice in the browser for free (demo + their own clone on our hosted engine). If they want to run the full engine on their own computer forever, they pay **$9.99 once** via Stripe and get Docker download + macOS/Windows setup instructions.
+#### Why the old idea was weak
 
-#### Product tiers
+Selling **Docker engine download for $9.99 lifetime** is easy to defeat:
 
-| Tier | Price | What they get |
+- Anyone who pays once can **copy the image**, re-upload it, or share the compose file  
+- License keys on a local Docker container are **honor-system** — determined users bypass them  
+- At $9.99, resellers / “cracked” mirrors are economically rational  
+- Your real cost is **GPU/CPU hosting + support + product UX**, not a secret `.tar` file  
+
+**Do not make “download the engine” the thing people pay for.** Make **convenient, reliable hosted usage** the product.
+
+#### Ideal model (recommended)
+
+| Tier | Price (starting point) | What they get |
 | --- | --- | --- |
-| **Demo (free)** | $0 | Use the hosted web app. Try a **demo clone voice**. Create **their own clone**. Generate speech (incl. other languages / translate-then-speak when built). Limits apply (see below). Engine stays on our server — no Docker download. |
-| **Lifetime local** | **$9.99 one-time** | Everything in demo, plus **download the HushVoice Docker engine**, license/unlock for local use, and **setup guides for macOS and Windows**. No recurring subscription. |
+| **Free demo** | $0 | Hosted app only. **Demo voice** (no mic). Optionally **1 short personal clone**. Hard caps on speaks/day and text length. Watermark or “Demo” badge in UI. **No** engine download. |
+| **Pro (hosted)** | **~$9.99/month** *or* credit packs (e.g. $9.99 → N generations) | Hosted clone + multilingual speak (+ translate-then-speak). Higher limits, saved voices, no watermark. Stripe subscription or prepaid credits. **Engine stays on our servers.** |
+| **Local / power user** (optional later) | Higher one-time or annual (e.g. **$49–99**) **or free open-source engine** | Self-host for privacy/offline. Position as **convenience + docs + updates**, not DRM. Accept some sharing; revenue still comes from Pro hosted. |
+
+**Primary revenue = Pro hosted (Stripe).**  
+**Local Docker = secondary** (privacy nerds / offline), not the moat.
+
+#### Why this works
+
+```
+You keep the expensive part (running Chatterbox)
+Users pay for convenience (no Docker, works on phone, always on)
+Copying the website doesn’t give them free unlimited inference
+Piracy of a local image doesn’t bankrupt your cloud bill
+```
 
 #### Demo funnel (conversion path)
 
 ```
 Land on site
-  → Try demo voice (no mic required) — hear quality fast
-  → Record → create own clone on hosted engine
-  → Type / translate → speak in their voice (other languages)
-  → Hit paywall for “Run on my computer” / unlimited local use
-  → Stripe Checkout ($9.99 lifetime)
-  → Success page: download engine + macOS / Windows install docs
+  → Speak with demo clone (instant “wow”)
+  → Record → create own clone (limited)
+  → Translate English → target language → speak
+  → Hit limit / want more voices / longer text
+  → Stripe: subscribe or buy credits
+  → Keep using hosted Studio (Vercel → your engine)
 ```
 
-#### Suggested free-tier limits (open to tune)
+Optional later CTA: “Prefer offline? Self-host guide” (paid docs pack or open source) — **not** the main checkout.
 
-- [ ] Cap generations per day (e.g. 10 speaks / day)  
-- [ ] Cap clone count (e.g. 1–2 voices)  
-- [ ] Cap text length on free speak  
-- [ ] Watermark or short demo banner (optional, keep tasteful)  
-- [ ] No engine binary / compose package download until paid  
+#### Free-tier limits (tune with data)
 
-Paid users: unlock download + remove cloud caps for local engine (cloud demo can stay available or also unlock higher limits).
+- [ ] Demo voice: unlimited or high cap (cheap acquisition)  
+- [ ] Personal clones: 1 on free  
+- [ ] Speaks/day: e.g. 5–10  
+- [ ] Max characters per speak  
+- [ ] Clones/voices deleted after N days of inactivity (cost + privacy)  
 
 #### Stripe integration (plan)
 
-**Checkout**
+**Preferred v1**
 
-- Stripe Checkout Session, mode: `payment` (one-time)  
-- Price: **$9.99 USD** lifetime  
-- Success URL → `/account/unlock` or `/download` with session id  
-- Cancel URL → pricing / studio CTA  
+- Stripe Checkout, mode: **`subscription`** (e.g. $9.99/mo Pro)  
+  **or** mode: **`payment`** for credit packs (simpler ops, no churn management at first)  
 
 **After payment**
 
-- Webhook `checkout.session.completed` → mark customer/email (or account) as `lifetime_unlocked`  
-- Issue a **download token** or signed URL for the engine package  
-- Show **macOS** and **Windows** setup instructions (link to or fork of `docs/LOCAL_INSTALL.md`, split per OS)  
+- Webhook → set `plan=pro` or add credit balance on user/email  
+- Hosted `/api/clone` and `/api/speak` check entitlement before calling the engine  
+- Customer Portal for cancel/receipts if subscription  
 
-**Customer identity (open decision)**
+**Identity**
 
-- Minimal: email from Stripe Checkout (no full auth) + magic link to re-access downloads  
-- Or: simple account (email/password or magic link) so they can return for docs/downloads  
+- Simple auth (magic link email) so limits and purchases stick across devices  
 
-**Env / secrets (when implementing)**
+**Env (when implementing)**
 
-- `STRIPE_SECRET_KEY`  
-- `STRIPE_WEBHOOK_SECRET`  
-- `STRIPE_PRICE_ID` (or hardcoded amount for $9.99)  
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`  
+- `STRIPE_PRICE_ID` (subscription and/or credit pack)  
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`  
 
-#### Download & install after purchase
+#### What we explicitly do *not* sell as the core product
 
-Deliverables for paid users:
+- ~~$9.99 lifetime Docker download as the only paid tier~~ (superseded — too easy to copy/resell)  
+- DRM’d “secret” engine images as the business  
 
-1. **Engine package** — Docker Compose + image instructions (or pull from private registry / GitHub Release asset)  
-2. **macOS setup guide** — Docker Desktop, Rosetta if needed, `docker compose up`, health check, Studio pointing at `localhost`  
-3. **Windows setup guide** — Docker Desktop + WSL2, RAM notes (8 GB tight / 16 GB recommended), same compose flow  
-4. Optional: license key file or env flag `HUSHVOICE_LICENSE=…` if we want soft enforcement later  
+Local install docs can remain for **your** Mac Mini / power users; public “buy the binary” is optional and never the main lock.
 
 #### UI surfaces to add
 
-- [ ] Pricing page (`/pricing`) — Demo vs Lifetime $9.99  
-- [ ] Studio CTAs — “Try demo voice”, “Unlock local engine — $9.99”  
-- [ ] Post-checkout download + docs page  
-- [ ] Account / “Access my download” (email magic link if no full auth)  
+- [ ] `/pricing` — Free demo vs Pro hosted  
+- [ ] Studio: demo voice CTA, limit banners, upgrade to Pro  
+- [ ] Account: plan status, credits, Stripe portal  
+- [ ] (Later) Self-host docs link — not behind the same $9.99 “download everything” paywall  
 
 #### Architecture sketch
 
 ```
-Free user → Vercel UI → our hosted engine (demo + limited clones)
-Paid user → Stripe Checkout ($9.99)
-         → webhook unlocks download
-         → user runs engine on their Mac/Windows
-         → optional: still use Vercel UI with HUSHVOICE_ENGINE_URL=localhost
-                    or run UI locally via npm run dev
+Free/Pro users → Vercel UI → entitlement check → our hosted engine
+                      ↑
+                 Stripe (subscription or credits)
+
+Self-host (optional) → user’s machine; not required for Pro value
 ```
 
 #### Acceptance criteria
 
-- [ ] Anonymous user can speak with a **demo clone** without paying  
-- [ ] Anonymous/free user can **create one clone** and generate multilingual TTS on hosted engine (within limits)  
-- [ ] “Buy lifetime — $9.99” starts Stripe Checkout  
-- [ ] Successful payment unlocks engine download + macOS/Windows instructions  
-- [ ] Webhook is verified; unpaid users cannot download the engine package  
-- [ ] Paid user can re-open download/docs later (email link or account)  
+- [ ] Demo voice works without signup/payment  
+- [ ] Free user can create a limited personal clone and speak (incl. other languages when translate ships)  
+- [ ] Over-limit requests are blocked with upgrade CTA  
+- [ ] Stripe unlocks Pro / credits; webhook verified  
+- [ ] Unpaid users cannot burn unlimited hosted GPU/CPU  
+- [ ] Product copy does not promise an un-copyable local binary  
 
 #### Open decisions
 
-- Exact free caps (daily speaks, clones, char limit)  
-- Auth model: Stripe email only vs full accounts  
-- How engine is distributed (public Docker Hub vs private release after pay)  
-- Whether paid also raises hosted-cloud limits or hosted stays demo-only  
-- Refund / support policy for lifetime purchase  
+- Subscription vs credit packs for v1 (credits = simpler; sub = recurring revenue)  
+- Exact price points ($9.99/mo vs $4.99/mo vs $9.99 for 100 speaks)  
+- Whether self-host is free/open, paid support, or deferred  
+- Voice data retention on free tier  
 
 #### Compliance / trust
 
-- Clear “one-time lifetime for local engine license/download” copy  
-- Privacy: voice samples on hosted demo — retention policy (delete after N days?)  
-- Stripe Customer Portal optional (receipts); no subscription cancel flow needed  
+- Clear hosted vs self-host messaging  
+- Privacy policy for voice samples on our servers  
+- Stripe receipts; refund policy for credits/subs  
 
 ## Later / ideas
 
@@ -175,10 +189,12 @@ Paid user → Stripe Checkout ($9.99)
 - [ ] Warm/preload Chatterbox model on engine start  
 - [ ] Better first-run progress UI while models download  
 - [ ] GPU path for faster generation on capable machines  
-- [ ] Team / volume licenses (if lifetime $9.99 solo isn’t enough later)  
+- [ ] Team seats / API access for Pro  
+- [ ] Optional self-host “supporter” license (docs + updates), knowing redistribution risk  
 
 ## Out of scope (for now)
 
-- Replacing the self-hosted engine with a paid cloud TTS provider as the primary product  
+- Replacing the engine with a third-party cloud TTS as the core product  
 - Training custom models from scratch  
-- Monthly subscription (lifetime one-time is the v1 monetization)  
+- Relying on DRM of a Docker image as the business model  
+- $9.99 lifetime engine download as primary monetization (rejected — see pricing revised)  
