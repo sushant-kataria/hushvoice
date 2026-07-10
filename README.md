@@ -35,6 +35,10 @@ Host the **UI on Vercel** and keep the **engine on the Mac Mini** (via Cloudflar
 
 **[docs/VERCEL_MAC_MINI.md](./docs/VERCEL_MAC_MINI.md)**
 
+## Product plan
+
+Upcoming features (including translate-then-speak): **[docs/PLAN.md](./docs/PLAN.md)**
+
 ## Configuration
 
 | Variable | Default | Description |
