@@ -114,6 +114,81 @@ Optional later CTA: “Prefer offline? Self-host guide” (paid docs pack or ope
 - [ ] Max characters per speak  
 - [ ] Clones/voices deleted after N days of inactivity (cost + privacy)  
 
+#### How to restrict usage (enforcement)
+
+Limits only work if checked **on the server before** calling the engine. The Studio UI can show banners; the browser can be bypassed. Today `/api/clone` and `/api/speak` are open — that must change before public Pro.
+
+```
+User → Vercel /api/speak|/api/clone
+         1. Who are you?     (session / magic-link cookie)
+         2. What plan?       (free | pro | credits left)
+         3. Under cap?       (speaks today, clones, chars, concurrency)
+         4. OK → engine
+            DENY → 402/429 + upgrade CTA
+```
+
+**1. Identity (required)**
+
+- Magic-link or email OTP → httpOnly session cookie  
+- Anonymous free demo: allow **demo voice only** keyed by IP + cookie fingerprint (easy to burn; keep caps low)  
+- Personal clone / Pro: require signed-in user  
+
+**2. Entitlement store**
+
+Per user (DB or KV: Vercel KV / Postgres / Turso):
+
+| Field | Example |
+| --- | --- |
+| `plan` | `free` \| `pro` |
+| `credits` | integer (if using packs) |
+| `speaks_today` / `speaks_day_key` | counter + UTC date |
+| `clone_count` | active personal voices |
+| `stripe_customer_id` | for portal |
+
+Stripe webhook writes `plan` / `credits`. Speak/clone routes **decrement or reject**.
+
+**3. Hard rules to enforce in API**
+
+| Check | Free | Pro (starting point) |
+| --- | --- | --- |
+| Demo voice speaks | High / soft cap | Unlimited-ish |
+| Personal clones | **1** | e.g. 5–10 |
+| Speaks / day | **5–10** | e.g. 200 or credit-metered |
+| Max chars / speak | e.g. **300** | e.g. 2000 |
+| Concurrent generates | **1** | 1–2 |
+| Engine access | Only via Vercel API | Same |
+
+On deny: `429` (rate) or `402` (paywall) with `{ error, code: "LIMIT_SPEAKS", upgrade: true }`.
+
+**4. Credit packs (simplest COGS control)**
+
+- Buy pack → `credits += N`  
+- Each successful speak → `credits -= 1` (or weighted by char length)  
+- `credits <= 0` → block speak (clone can stay free/limited)  
+- Subscription Pro can mean “refill N credits/month” or “soft unlimited under fair-use”
+
+**5. Lock the engine URL (critical)**
+
+If `engine.yourdomain.com` / RunPod is public, people skip Vercel and burn GPU.
+
+- Engine shared secret: Vercel sends `Authorization: Bearer $ENGINE_API_KEY`; engine rejects others  
+- Or Cloudflare Access / tunnel only from Vercel egress (harder)  
+- Prefer **secret header** on FastAPI middleware — cheap and enough for v1  
+
+**6. Concurrent + abuse**
+
+- Global queue depth on engine (reject when busy)  
+- Per-user lock during generate  
+- Block obvious abuse: empty spam, same text flood, huge uploads  
+
+**v1 implementation order**
+
+1. Engine API key (stop open engine)  
+2. Session auth + user row  
+3. Caps on `/api/speak` and `/api/clone`  
+4. Stripe webhook → Pro/credits  
+5. Studio UI for remaining quota / upgrade  
+
 #### Stripe integration (plan)
 
 **Preferred v1**
