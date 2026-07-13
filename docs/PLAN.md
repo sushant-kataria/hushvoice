@@ -369,6 +369,114 @@ Serverless endpoint (C): no pod lifecycle in webhook
 - Block the user’s browser on “waiting for GPU provision” for minutes without a clear UI  
 - Put `RUNPOD_API_KEY` in client-side code  
 
+### 4. Margin-safe plan — stay profitable by design
+
+**Goal:** every paid speak is prepaid; free usage is a fixed marketing budget; GPU never runs unbounded against unpaid demand.
+
+#### Iron rules (non-negotiable)
+
+1. **No unlimited hosted speaks** at consumer prices — always meter (credits) or hard daily caps.  
+2. **Never call the engine** unless the user has remaining quota/credits (or is on capped free demo).  
+3. **Never auto-start RunPod** unless there is **prepaid credit balance** (or active Pro with included credits) across the product — or you’re still on free Mac Mini Phase A.  
+4. **Price ≥ 4× measured compute** after Stripe fees (~2.9% + $0.30). Target **gross margin ≥ 70%** on paid usage.  
+5. **Free tier = fixed monthly budget**, not “as much as people want.” When free GPU budget is spent → demo pauses or demotes to waitlist.  
+
+#### Unit economics (fill in with your numbers)
+
+Measure once on your Mac Mini / a test GPU:
+
+| Metric | How to get it | Example placeholder |
+| --- | --- | --- |
+| `T` | Wall seconds per typical speak (~100–200 chars) | e.g. 15s GPU |
+| `G` | GPU $/hour (RunPod) | e.g. $0.40/hr |
+| `C` | Cost per speak = `T/3600 × G` | e.g. $0.0017 |
+| `P` | Price charged per credit (1 speak) | **≥ 4 × C** after fees → e.g. **≥ $0.01** floor; charge more |
+
+Until `C` is measured, **assume worse** (CPU slower, cold starts) and price conservatively.
+
+#### Recommended product packaging (margin-first)
+
+| Offer | Price | What buyer gets | Why margin-safe |
+| --- | --- | --- | --- |
+| **Free demo** | $0 | Demo voice + **tiny** caps (e.g. 3 speaks/day, 200 chars, **no** personal clone *or* 1 clone + 5 speaks/day) | Hard caps; global free budget kill-switch |
+| **Starter credits** | **$9.99** one-time | **e.g. 400 credits** (400 speaks) | Prepaid; if they use all 400, revenue already banked |
+| **Pro monthly** | **$9.99/mo** | **e.g. 300 credits/mo** (not unlimited) + higher char limit + saved voices | Included credits = max COGS ceiling per sub |
+| **Top-up** | $4.99 / $19.99 | More credits | Same meter |
+
+**Critical:** Pro is **“300 speaks included”**, not “unlimited for $9.99.” Unlimited is how you go negative.
+
+Math check (example): 300 speaks × $0.002 COGS ≈ **$0.60** compute vs **~$9.40** net after Stripe → fat margin even if `C` is 5× higher.
+
+If heavy users burn 300 mid-month → they **buy top-ups** or wait for next refill. You stay green.
+
+#### Operating model that keeps you in the black
+
+```
+Stripe money in
+  → credits added to user
+  → speak only if credits > 0
+  → decrement credit on success
+  → if total prepaid credits in system low AND queue empty
+       → stop/idle shared GPU (Phase B wake pattern)
+  → free tier draws from FREE_MONTHLY_BUDGET_USD only
+```
+
+**Daily/weekly kill-switches (automate later, manual at first)**
+
+- `free_spend_usd_mtd` ≥ budget → disable free speaks  
+- `gpu_spend_usd_mtd` ≥ `0.25 × paid_revenue_mtd` → tighten caps / stop waking GPU / alert you  
+- Concurrent jobs hard-capped so one user can’t saturate the box  
+
+#### Phase A (Mac Mini) — margin is easy
+
+- Electricity ≈ fixed; your time is the cost  
+- Still enforce credits/caps so habits and UI match Phase B  
+- Don’t promise cloud speed/SLA yet  
+
+#### Phase B (RunPod) — only when prepaid
+
+- Prefer **Serverless** or **wake shared pod on demand** over 24/7 GPU until MRR covers always-on  
+- Always-on GPU only when:  
+  `monthly_prepaid_revenue × 0.25 ≥ always_on_gpu_monthly_cost`  
+  (keep ≤25% of revenue on raw GPU until scale efficiency improves)  
+- One shared pod for all paid users — never per-buyer  
+
+#### What to avoid (margin killers)
+
+| Mistake | Why it breaks margin |
+| --- | --- |
+| Unlimited Pro at $9.99 | One power user can cost more than they pay |
+| Spin RunPod on every signup | Cold idle burn with $0 revenue |
+| Soft “fair use” only, no hard stop | Abuse + viral free traffic |
+| Public engine URL, no API key | Bypass metering entirely |
+| Refunds without clawing credits | Pay for compute twice |
+| Long free personal clones | Storage + repeat speaks on your dime |
+
+#### Launch checklist (do in order)
+
+1. [ ] Measure `C` (cost/speak) on target hardware  
+2. [ ] Set credit price with **≥4×** buffer; publish pack sizes  
+3. [ ] Ship auth + credit decrement on `/api/speak`  
+4. [ ] Ship free hard caps + global free budget  
+5. [ ] Engine API key  
+6. [ ] Stripe Checkout for credits / Pro-with-credits  
+7. [ ] Only then point production at paid RunPod  
+8. [ ] Dashboard: revenue vs GPU spend (weekly glance)  
+
+#### Acceptance criteria (margin)
+
+- [ ] Paid speak impossible with 0 credits  
+- [ ] Free spend cannot exceed configured monthly budget  
+- [ ] Published packs imply COGS ≪ revenue at measured `C`  
+- [ ] No always-on cloud GPU until revenue rule above is met  
+- [ ] Engine not callable without going through metered API  
+
+#### Open pricing decisions (within this frame)
+
+- Exact credits per $9.99 pack (set after measuring `C`)  
+- Whether Pro monthly auto-refills credits or is credits-only (no sub)  
+- Free: demo-only vs 1 personal clone  
+
 ## Later / ideas
 
 - [ ] Stable named Cloudflare tunnel (replace trycloudflare URLs)  
