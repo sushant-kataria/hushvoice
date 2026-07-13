@@ -183,6 +183,74 @@ Self-host (optional) → user’s machine; not required for Pro value
 - Privacy policy for voice samples on our servers  
 - Stripe receipts; refund policy for credits/subs  
 
+### 3. Compute plan — where inference actually runs
+
+Vercel only hosts the **Next.js UI**. Chatterbox needs a long-lived machine with RAM/CPU (ideally GPU). That machine is **your** cost of goods; Stripe Pro/credits must cover it.
+
+#### Phase A — Launch / early users (what you have now)
+
+**Your Mac Mini is the compute.**
+
+```
+Paying + free users → Vercel → Cloudflare Tunnel → Mac Mini Docker engine
+```
+
+- Keep Mac Mini awake, Docker `engine` up, named tunnel stable (`docs/VERCEL_MAC_MINI.md`)
+- Free-tier caps + Pro entitlements so one viral day doesn’t lock your Mini forever
+- Expect **slow CPU generation**; fine for demos and a handful of Pro users
+- Cap concurrent jobs (queue of 1–2) so the machine doesn’t thrash
+
+**When this breaks:** queue wait too long, Mac overheats, home uplink dies, or you need 24/7 uptime while traveling.
+
+#### Phase B — Real hosted product (when Stripe revenue starts)
+
+**Rent a cloud GPU (or strong CPU) and point `HUSHVOICE_ENGINE_URL` at it.** Same Docker engine image — only the host changes.
+
+| Option | Role | Notes |
+| --- | --- | --- |
+| **RunPod / Vast.ai / Lambda** | Cheap GPU pods | Good for TTS; spot pricing; you manage Docker + tunnel or public URL |
+| **Modal / Replicate-style** | Serverless GPU | Pay per second; cold starts; good if traffic is spiky |
+| **Fly.io / Railway / Render** | Always-on CPU (or GPU if available) | Simpler ops; slower/more expensive per speak than a dedicated GPU |
+| **Small cloud VM + GPU** (AWS/GCP/Azure) | Enterprise path | More ops; only when you outgrow pods |
+
+Recommended default for Phase B: **one always-on GPU pod** (e.g. RunPod) running `hushvoice-engine`, HTTPS endpoint, Vercel env updated. Keep Mac Mini as **dev / failover**, not production.
+
+#### Phase C — Scale (many Pro users)
+
+- Job queue (Redis) + 1→N engine workers  
+- Separate **demo** vs **Pro** pools so free users can’t starve paying ones  
+- Autoscale workers on queue depth; shut down idle GPUs overnight if using credit packs / low night traffic  
+- Optional CDN/cache for identical demo-voice speaks only  
+
+#### How money maps to compute
+
+```
+Free user speak  → capped; paid from your margin / marketing budget
+Pro $9.99/mo     → must cover (their speaks × cost per speak) + overhead
+Credit pack      → easiest COGS control: N credits ≈ N GPU-seconds reserved
+```
+
+Rule of thumb before raising limits: measure **seconds of GPU time per speak** on your box, price credits so **revenue ≥ ~3–5× compute** after Stripe fees.
+
+#### What you do *not* need
+
+- Vercel Pro / serverless ML — Vercel will not run Chatterbox  
+- Buying GPUs on day one — Mac Mini validates the product; cloud GPU is the scale-up  
+- Giving every customer their own GPU — one shared engine + entitlement caps is enough until load demands more  
+
+#### Acceptance criteria (compute)
+
+- [ ] Documented Phase A path (Mini + tunnel) works for demo + early Pro  
+- [ ] `HUSHVOICE_ENGINE_URL` can switch from Mini → cloud GPU without app rewrite  
+- [ ] Free/Pro limits prevent unbounded spend on whatever host you use  
+- [ ] Rough cost-per-speak known before opening Pro publicly  
+
+#### Open decisions
+
+- First cloud host (RunPod vs Modal vs other) when leaving the Mac Mini  
+- Always-on GPU vs serverless (latency vs cost)  
+- Whether demo voice runs on a cheaper CPU box and Pro on GPU  
+
 ## Later / ideas
 
 - [ ] Stable named Cloudflare tunnel (replace trycloudflare URLs)  
