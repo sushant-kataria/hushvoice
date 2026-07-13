@@ -251,6 +251,49 @@ Rule of thumb before raising limits: measure **seconds of GPU time per speak** o
 - Always-on GPU vs serverless (latency vs cost)  
 - Whether demo voice runs on a cheaper CPU box and Pro on GPU  
 
+#### Stripe → RunPod automation (yes, but not “one GPU per buyer”)
+
+RunPod can be started from code ([REST API](https://docs.runpod.io/api-reference/pods/POST/pods) / `create_pod` / `resume_pod`). Stripe can call your app on payment (`checkout.session.completed`, `invoice.paid`). Wire them together — **do not** spawn a dedicated pod for every $9.99 customer.
+
+**Recommended patterns**
+
+| Pattern | What Stripe payment does | Compute behavior | Fit |
+| --- | --- | --- | --- |
+| **A. Entitlement only (best default)** | Set `plan=pro` / add credits | Shared engine already running (Mini or one RunPod). Payment never touches RunPod. | Early Pro; predictable |
+| **B. Wake shared pod** | Unlock Pro **and** if no GPU is up → `resume_pod` / `POST /pods` once | One shared pod for all Pro users; stop after N minutes idle | Save money overnight |
+| **C. RunPod Serverless** | Unlock Pro / credits | Each `/speak` → RunPod `/run`; workers scale 0→N automatically | Spiky traffic; pay per job |
+| **D. Per-user pod** | Create a pod for that customer | Expensive, slow cold start, ops hell at $9.99 | Only high-ticket / dedicated |
+
+```
+Stripe webhook (payment success)
+        │
+        ▼
+Your Vercel/API route
+  1. Verify signature
+  2. Mark user Pro / add credits     ← always do this
+  3. Optional: ensureSharedGpu()     ← B only
+        │
+        ▼
+RunPod API (shared): create/resume/stop ONE pod
+        or
+Serverless endpoint (C): no pod lifecycle in webhook
+```
+
+**What to implement first:** Pattern **A** (Stripe unlocks access; Mac Mini or one always-on RunPod). Add **B** or **C** when you care about idle GPU cost.
+
+**Env when automating B/C**
+
+- `STRIPE_*` (existing)  
+- `RUNPOD_API_KEY`  
+- `RUNPOD_POD_ID` or `RUNPOD_TEMPLATE_ID` / serverless `RUNPOD_ENDPOINT_ID`  
+- Optional: store live engine URL in DB/KV after wake; Vercel reads it (or fixed subdomain via tunnel/proxy)
+
+**Do not**
+
+- Create a new RunPod on every Checkout — margin dies  
+- Block the user’s browser on “waiting for GPU provision” for minutes without a clear UI  
+- Put `RUNPOD_API_KEY` in client-side code  
+
 ## Later / ideas
 
 - [ ] Stable named Cloudflare tunnel (replace trycloudflare URLs)  
