@@ -77,7 +77,7 @@ Selling **Docker engine download for $9.99 lifetime** is easy to defeat:
 | Tier | Price (starting point) | What they get |
 | --- | --- | --- |
 | **Free demo** | $0 | Hosted app only. **Demo voice** (no mic). Optionally **1 short personal clone**. Hard caps on speaks/day and text length. Watermark or “Demo” badge in UI. **No** engine download. |
-| **Pro (hosted)** | **~$9.99/month** *or* credit packs (e.g. $9.99 → N generations) | Hosted clone + multilingual speak (+ translate-then-speak). Higher limits, saved voices, no watermark. Stripe subscription or prepaid credits. **Engine stays on our servers.** |
+| **Pro (hosted)** | **~$9.99/month with included credits** *and/or* credit packs | Hosted clone + multilingual speak (+ translate-then-speak). **Metered credits** (not unlimited). Higher limits, saved voices. Stripe. **Engine stays on our servers.** See §4 margin-safe plan. |
 | **Local / power user** (optional later) | Higher one-time or annual (e.g. **$49–99**) **or free open-source engine** | Self-host for privacy/offline. Position as **convenience + docs + updates**, not DRM. Accept some sharing; revenue still comes from Pro hosted. |
 
 **Primary revenue = Pro hosted (Stripe).**  
@@ -247,10 +247,11 @@ Self-host (optional) → user’s machine; not required for Pro value
 
 #### Open decisions
 
-- Subscription vs credit packs for v1 (credits = simpler; sub = recurring revenue)  
-- Exact price points ($9.99/mo vs $4.99/mo vs $9.99 for 100 speaks)  
+- Exact credits per $9.99 after measuring cost/speak (see §4)  
+- Pro monthly (credits refill) vs credits-only packs for v1 — both OK if metered  
 - Whether self-host is free/open, paid support, or deferred  
 - Voice data retention on free tier  
+ 
 
 #### Compliance / trust
 
