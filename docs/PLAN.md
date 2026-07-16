@@ -183,11 +183,11 @@ If `engine.yourdomain.com` / RunPod is public, people skip Vercel and burn GPU.
 
 **v1 implementation order**
 
-1. Engine API key (stop open engine)  
-2. Session auth + user row  
-3. Caps on `/api/speak` and `/api/clone`  
-4. Stripe webhook → Pro/credits  
-5. Studio UI for remaining quota / upgrade  
+1. [x] Engine API key (stop open engine)  
+2. [x] Session auth + user row  
+3. [x] Caps on `/api/speak` and `/api/clone`  
+4. [x] Stripe webhook → Pro/credits  
+5. [x] Studio UI for remaining quota / upgrade  
 
 #### Stripe integration (plan)
 
@@ -239,11 +239,11 @@ Self-host (optional) → user’s machine; not required for Pro value
 #### Acceptance criteria
 
 - [ ] Demo voice works without signup/payment  
-- [ ] Free user can create a limited personal clone and speak (incl. other languages when translate ships)  
-- [ ] Over-limit requests are blocked with upgrade CTA  
-- [ ] Stripe unlocks Pro / credits; webhook verified  
-- [ ] Unpaid users cannot burn unlimited hosted GPU/CPU  
-- [ ] Product copy does not promise an un-copyable local binary  
+- [x] Free user can create a limited personal clone and speak (incl. other languages when translate ships)  
+- [x] Over-limit requests are blocked with upgrade CTA  
+- [x] Stripe unlocks Pro / credits; webhook verified (configure env + Stripe Dashboard)  
+- [x] Unpaid users cannot burn unlimited hosted GPU/CPU  
+- [x] Product copy does not promise an un-copyable local binary  
 
 #### Open decisions
 

@@ -44,21 +44,24 @@ export function SiteHeader() {
           >
             Languages
           </a>
+          <Link href="/pricing" className="transition-colors hover:text-foreground">
+            Pricing
+          </Link>
           <a href="#studio" className="transition-colors hover:text-foreground">
             Studio
           </a>
         </nav>
 
         <div className="flex items-center gap-2">
-          <a
-            href="#how"
+          <Link
+            href="/account"
             className={cn(
               buttonVariants({ variant: "ghost", size: "sm" }),
               "hidden sm:inline-flex"
             )}
           >
-            Learn more
-          </a>
+            Account
+          </Link>
           <Link
             href="/studio"
             className={cn(

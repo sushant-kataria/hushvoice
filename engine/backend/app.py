@@ -157,7 +157,11 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    from .auth_middleware import EngineApiKeyMiddleware
+
     _configure_cors(application)
+    # Outer-most auth: reject unauthenticated callers when ENGINE_API_KEY is set.
+    application.add_middleware(EngineApiKeyMiddleware)
     application.add_middleware(ClientIdMiddleware)
     register_routers(application)
     application.mount("/mcp", mcp_app)

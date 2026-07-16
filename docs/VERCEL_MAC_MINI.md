@@ -78,6 +78,15 @@ Keep `cloudflared` running (LaunchAgent / login item) whenever you want the Verc
 | --- | --- |
 | `HUSHVOICE_ENGINE_URL` | `https://engine.yourdomain.com` |
 | `HUSHVOICE_TTS_ENGINE` | `chatterbox` |
+| `HUSHVOICE_ENGINE_API_KEY` | same secret as Mac Mini `ENGINE_API_KEY` |
+| `HUSHVOICE_BILLING_MODE` | `metered` |
+| `HUSHVOICE_SESSION_SECRET` | long random string |
+| `HUSHVOICE_DATABASE_URL` | Turso/libsql URL (required on Vercel — local file DB won’t persist) |
+| `HUSHVOICE_DATABASE_AUTH_TOKEN` | Turso token |
+| `STRIPE_SECRET_KEY` | Stripe secret |
+| `STRIPE_WEBHOOK_SECRET` | webhook signing secret → `https://your-app.vercel.app/api/billing/webhook` |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable |
+| `NEXT_PUBLIC_APP_URL` | `https://your-app.vercel.app` |
 
 6. Deploy
 

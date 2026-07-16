@@ -32,6 +32,7 @@ import { LANGUAGES, getLanguage } from "@/lib/languages";
 import { formatDuration } from "@/lib/audio";
 import { Waveform } from "@/components/studio/waveform";
 import { BackendStatus } from "@/components/studio/backend-status";
+import { QuotaBar, useQuota } from "@/components/billing/quota-bar";
 import { cn } from "@/lib/utils";
 
 type VoiceProfile = {
@@ -67,6 +68,7 @@ export function VoiceStudio() {
   const [speaking, setSpeaking] = useState(false);
   const [loadingVoices, setLoadingVoices] = useState(true);
   const [readyAudioUrl, setReadyAudioUrl] = useState<string | null>(null);
+  const { quota, refresh: refreshQuota, setQuota } = useQuota();
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -228,12 +230,26 @@ export function VoiceStudio() {
 
       const res = await fetch("/api/clone", { method: "POST", body: form });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Clone failed");
+      if (!res.ok) {
+        if (data.upgrade) {
+          toast.error(data.error || "Limit reached", {
+            action: {
+              label: "Pricing",
+              onClick: () => {
+                window.location.href = "/pricing";
+              },
+            },
+          });
+        }
+        throw new Error(data.error || "Clone failed");
+      }
 
       setCloneProgress(100);
       toast.success("Voice clone ready");
       setActiveVoiceId(data.voice.id);
       setSpeakLang(data.voice.language || language);
+      if (data.quota) setQuota(data.quota);
+      else await refreshQuota();
       await refreshVoices(true);
       setStep("speak");
     } catch (err) {
@@ -313,12 +329,26 @@ export function VoiceStudio() {
       const startData = (await res.json().catch(() => ({}))) as {
         error?: string;
         generationId?: string;
+        upgrade?: boolean;
+        quota?: typeof quota;
       };
       if (!res.ok) {
+        if (startData.upgrade) {
+          toast.error(startData.error || "No speaks left", {
+            action: {
+              label: "Get credits",
+              onClick: () => {
+                window.location.href = "/pricing";
+              },
+            },
+          });
+        }
         throw new Error(
           startData.error || "Speak failed — is the HushVoice engine running?"
         );
       }
+      if (startData.quota) setQuota(startData.quota);
+      else await refreshQuota();
       if (!startData.generationId) {
         throw new Error("Engine did not start a generation. Check /api/health.");
       }
@@ -407,6 +437,12 @@ export function VoiceStudio() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/pricing"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden sm:inline-flex")}
+            >
+              Pricing
+            </Link>
             <StepPill active={step === "record"} done={!!audioBlob || !!activeVoice}>
               1 · Record
             </StepPill>
@@ -418,8 +454,9 @@ export function VoiceStudio() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
+      <div className="mx-auto max-w-5xl space-y-3 px-4 pt-4 sm:px-6">
         <BackendStatus />
+        <QuotaBar quota={quota} />
       </div>
 
       <main className="mx-auto grid max-w-5xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_280px]">

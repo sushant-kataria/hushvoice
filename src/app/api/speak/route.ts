@@ -8,6 +8,13 @@ import {
   EngineError,
   waitForGeneration,
 } from "@/lib/engine";
+import {
+  EntitlementError,
+  assertCanSpeak,
+  consumeSpeak,
+  entitlementResponse,
+} from "@/lib/billing/entitlements";
+import { getOrCreateSessionUser } from "@/lib/billing/session";
 
 export const runtime = "nodejs";
 /** Allow longer waits on Pro / local; Hobby still caps lower. Prefer async poll. */
@@ -22,6 +29,8 @@ export const maxDuration = 60;
  */
 export async function POST(request: Request) {
   try {
+    const { user } = await getOrCreateSessionUser();
+
     const body = (await request.json()) as {
       voiceId?: string;
       text?: string;
@@ -33,9 +42,15 @@ export async function POST(request: Request) {
     if (!text) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 });
     }
-    if (text.length > 5000) {
+
+    const { maxChars } = await assertCanSpeak(user.id, text.length);
+    if (text.length > maxChars) {
       return NextResponse.json(
-        { error: "Text must be under 5000 characters" },
+        {
+          error: `Text must be under ${maxChars} characters on your plan.`,
+          code: "LIMIT_CHARS",
+          upgrade: true,
+        },
         { status: 400 }
       );
     }
@@ -60,6 +75,8 @@ export async function POST(request: Request) {
       engine: profile.default_engine || "chatterbox",
     });
 
+    const quota = await consumeSpeak(user.id);
+
     const shouldWait = body.wait === true;
 
     if (!shouldWait) {
@@ -69,6 +86,7 @@ export async function POST(request: Request) {
         language: language.code,
         engine: generation.engine || profile.default_engine || "chatterbox",
         backend: "hushvoice",
+        quota,
       });
     }
 
@@ -86,9 +104,13 @@ export async function POST(request: Request) {
         "X-HushVoice-Language": language.code,
         "X-HushVoice-Backend": "hushvoice",
         "X-HushVoice-Generation-Id": done.id,
+        "X-HushVoice-Credits": String(quota.credits),
       },
     });
   } catch (err) {
+    if (err instanceof EntitlementError) {
+      return NextResponse.json(entitlementResponse(err), { status: err.status });
+    }
     if (err instanceof EngineError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }

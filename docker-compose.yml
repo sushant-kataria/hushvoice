@@ -25,6 +25,8 @@ services:
     environment:
       - LOG_LEVEL=info
       - NUMBA_CACHE_DIR=/tmp/numba_cache
+      # Optional: lock engine so only Vercel/Next can call it (same value as HUSHVOICE_ENGINE_API_KEY)
+      - ENGINE_API_KEY=${ENGINE_API_KEY:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:17493/health"]
       interval: 30s
@@ -51,6 +53,9 @@ services:
     environment:
       - HUSHVOICE_ENGINE_URL=http://engine:17493
       - HUSHVOICE_TTS_ENGINE=chatterbox
+      - HUSHVOICE_ENGINE_API_KEY=${ENGINE_API_KEY:-}
+      - HUSHVOICE_BILLING_MODE=${HUSHVOICE_BILLING_MODE:-metered}
+
     depends_on:
       engine:
         condition: service_healthy

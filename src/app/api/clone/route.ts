@@ -7,6 +7,14 @@ import {
   toEngineLanguage,
   EngineError,
 } from "@/lib/engine";
+import {
+  EntitlementError,
+  assertCanClone,
+  entitlementResponse,
+  getQuota,
+  recordClone,
+} from "@/lib/billing/entitlements";
+import { getOrCreateSessionUser } from "@/lib/billing/session";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -22,6 +30,9 @@ export async function POST(request: Request) {
   let createdProfileId: string | null = null;
 
   try {
+    const { user } = await getOrCreateSessionUser();
+    await assertCanClone(user.id);
+
     const form = await request.formData();
     const audio = form.get("audio");
     const language = String(form.get("language") || "en");
@@ -80,6 +91,9 @@ export async function POST(request: Request) {
       referenceText: prompt,
     });
 
+    const updated = await recordClone(user.id);
+    const quota = await getQuota(updated);
+
     return NextResponse.json({
       voice: {
         id: profile.id,
@@ -91,6 +105,7 @@ export async function POST(request: Request) {
         engine: "chatterbox",
         backend: "hushvoice",
       },
+      quota,
       message:
         "Voice clone ready on your HushVoice engine. Type anything and hear it in your voice.",
     });
@@ -103,6 +118,9 @@ export async function POST(request: Request) {
       }
     }
 
+    if (err instanceof EntitlementError) {
+      return NextResponse.json(entitlementResponse(err), { status: err.status });
+    }
     if (err instanceof EngineError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }

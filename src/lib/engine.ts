@@ -72,17 +72,25 @@ async function parseError(res: Response): Promise<string> {
   return res.statusText || `HushVoice engine error (${res.status})`;
 }
 
+/** Shared secret so clients cannot bypass Vercel metering and hit the engine directly. */
+export const ENGINE_API_KEY =
+  process.env.HUSHVOICE_ENGINE_API_KEY ||
+  process.env.ENGINE_API_KEY ||
+  "";
+
 export async function engineFetch(
   path: string,
   init?: RequestInit
 ): Promise<Response> {
   const url = `${ENGINE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  const headers = new Headers(init?.headers || {});
+  if (ENGINE_API_KEY && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${ENGINE_API_KEY}`);
+  }
   try {
     return await fetch(url, {
       ...init,
-      headers: {
-        ...(init?.headers || {}),
-      },
+      headers,
       cache: "no-store",
     });
   } catch {

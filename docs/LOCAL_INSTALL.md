@@ -1,6 +1,8 @@
 # HushVoice — Local Install (for an agent)
 
-Install and run **HushVoice entirely on this computer**. No cloud host. No API keys. No Oracle/Vercel required.
+Install and run **HushVoice entirely on this computer**. No cloud host. No Oracle/Vercel required.
+
+By default the web app is **metered** (free daily caps). For unlimited local use set `HUSHVOICE_BILLING_MODE=open` in `.env.local`. For public hosted use keep `metered`, set Stripe + engine API key (see `.env.example`).
 
 ## Goal
 
@@ -41,9 +43,10 @@ cp .env.example .env.local
 ```bash
 HUSHVOICE_ENGINE_URL=http://127.0.0.1:17493
 HUSHVOICE_TTS_ENGINE=chatterbox
+HUSHVOICE_BILLING_MODE=open
 ```
 
-Do **not** point at a remote URL.
+Do **not** point at a remote URL. Use `metered` (and Stripe) when hosting publicly.
 
 ### 3. Start the voice engine (Docker)
 

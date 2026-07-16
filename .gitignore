@@ -43,3 +43,5 @@ next-env.d.ts
 
 # hushvoice local voice data
 .data/
+/data/
+*.db
