@@ -1,0 +1,65 @@
+# HushVoice — local voice engine + optional web UI (no API keys)
+#
+# Run everything on this computer:
+#   docker compose up -d --build engine   # voice engine on :17493
+#   npm run dev                           # web UI on :3000
+#
+# First run downloads ML models into the model-cache volume (several GB).
+# See docs/LOCAL_INSTALL.md for full local setup steps.
+
+services:
+  engine:
+    # Build the HushVoice engine image (compatible FastAPI voice stack).
+    # Override image/build in production as needed.
+    image: hushvoice-engine:latest
+    build:
+      context: ./engine
+      dockerfile: Dockerfile
+    container_name: hushvoice-engine
+    restart: unless-stopped
+    ports:
+      - "17493:17493"
+    volumes:
+      - hushvoice-data:/app/data
+      - hushvoice-model-cache:/home/hushvoice/.cache/huggingface
+    environment:
+      - LOG_LEVEL=info
+      - NUMBA_CACHE_DIR=/tmp/numba_cache
+      # Optional: lock engine so only Vercel/Next can call it (same value as HUSHVOICE_ENGINE_API_KEY)
+      - ENGINE_API_KEY=${ENGINE_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:17493/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+
+  # Optional: run the Next.js UI in Docker too
+  #   docker compose --profile full up -d --build
+  web:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hushvoice-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - HUSHVOICE_ENGINE_URL=http://engine:17493
+      - HUSHVOICE_TTS_ENGINE=chatterbox
+      - HUSHVOICE_ENGINE_API_KEY=${ENGINE_API_KEY:-}
+      - HUSHVOICE_BILLING_MODE=${HUSHVOICE_BILLING_MODE:-metered}
+
+    depends_on:
+      engine:
+        condition: service_healthy
+
+volumes:
+  hushvoice-data:
+  hushvoice-model-cache:
